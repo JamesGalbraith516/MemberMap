@@ -58,7 +58,7 @@
 <body>
   <div id="filterBar">
     <select id="typeFilter">
-      <option value="">All Membership Types</option>
+      <option value="">All Types</option>
     </select>
   </div>
   <div id="map"></div>
@@ -69,7 +69,7 @@
   </div>
 
   <script>
-    const map = L.map('map').setView([45.0, -100.0], 4);
+    const map = L.map('map').setView([50.5, -95.0], 4);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
@@ -83,7 +83,7 @@
     fetch(sheetURL)
       .then(response => response.text())
       .then(csv => {
-        const parsed = Papa.parse(csv, { header: true });
+        const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
         allData = parsed.data;
 
         const typeSet = new Set();
@@ -97,7 +97,7 @@
 
           row.lat = lat;
           row.lng = lng;
-          typeSet.add(row['Membership']);
+          typeSet.add(row['Type']);
         });
 
         // Populate filter dropdown
@@ -121,7 +121,7 @@
       const typeFilter = document.getElementById('typeFilter').value;
 
       allData.forEach(row => {
-        if (typeFilter && row['Membership'] !== typeFilter) return;
+        if (typeFilter && row['Type'] !== typeFilter) return;
 
         const marker = L.marker([row.lat, row.lng], {
           icon: L.icon({
