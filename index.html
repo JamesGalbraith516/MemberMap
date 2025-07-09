@@ -1,5 +1,8 @@
+<!-- Load PapaParse -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
 <script>
-  const map = L.map('map').setView([-37.8, 144.95], 6); // Start over Melbourne
+  const map = L.map('map').setView([-37.8, 144.95], 6);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
@@ -10,29 +13,20 @@
   fetch(sheetURL)
     .then(response => response.text())
     .then(csv => {
-      const rows = csv.trim().split('\n');
-      const headers = rows[0].split(',');
+      const parsed = Papa.parse(csv, { header: true });
+      const rows = parsed.data;
 
-      // Find column indexes
-      const geocodeIndex = headers.indexOf('Geocode');
-      const nameIndex = headers.indexOf('First Name');
-      const lastIndex = headers.indexOf('Last Name');
-      const bizIndex = headers.indexOf('Business Name');
-      const typeIndex = headers.indexOf('Membership');
-
-      rows.slice(1).forEach(row => {
-        const columns = row.split(',');
-
-        const geocode = columns[geocodeIndex];
+      rows.forEach(row => {
+        const geocode = row['Geocode'];
         if (!geocode || !geocode.includes(',')) return;
 
         const [lat, lng] = geocode.split(',').map(Number);
         if (isNaN(lat) || isNaN(lng)) return;
 
-        const name = columns[nameIndex] || '';
-        const last = columns[lastIndex] || '';
-        const biz = columns[bizIndex] || '';
-        const type = columns[typeIndex] || '';
+        const name = row['First Name'] || '';
+        const last = row['Last Name'] || '';
+        const biz = row['Business Name'] || '';
+        const type = row['Membership'] || '';
 
         const popup = `
           <strong>${name} ${last}</strong><br>
@@ -43,5 +37,5 @@
         L.marker([lat, lng]).bindPopup(popup).addTo(map);
       });
     })
-    .catch(error => console.error('Error loading CSV:', error));
+    .catch(error => console.error('Error loading or parsing CSV:', error));
 </script>
