@@ -1,21 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Live Map</title>
+  <title>Live Map with Filters</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet CSS -->
+  <!-- Leaflet CSS + JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-</head>
-<body>
-  <div id="map"></div>
-
-  <!-- Load Leaflet JS BEFORE your script -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-  <!-- Your map logic LAST -->
+  <style>
+    html, body {
+      height: 100%; margin: 0; font-family: sans-serif;
+    }
+    #map {
+      height: 100%; width: 75%; float: right;
+    }
+    #sidebar {
+      width: 25%; height: 100%; overflow-y: auto; padding: 1rem; box-sizing: border-box;
+      background: #f8f8f8; border-right: 1px solid #ccc;
+    }
+    .search-input {
+      width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;
+    }
+    .member {
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    select {
+      width: 100%; padding: 0.5rem; margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <input id="search" class="search-input" type="text" placeholder="Search by name or business">
+    <select id="typeFilter">
+      <option value="">All Membership Types</option>
+    </select>
+    <div id="memberList"></div>
+  </div>
+  <div id="map"></div>
+
   <script>
     const map = L.map('map').setView([-37.8, 144.95], 6);
 
@@ -25,45 +55,94 @@
 
     const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSm2djr9eOyF8SI92KcfrCsrFEcW3dmaStUT4H0Ard8A1BUKKgd08owmHvG6TT7AdfPXB26pJ-Stzjw/pub?gid=528897676&single=true&output=csv';
 
+    let markers = [];
+    let allData = [];
+
     fetch(sheetURL)
       .then(response => response.text())
       .then(csv => {
         const parsed = Papa.parse(csv, { header: true });
-        const rows = parsed.data;
+        allData = parsed.data;
 
-        rows.forEach(row => {
+        const typeSet = new Set();
+
+        allData.forEach(row => {
           const geocode = row['Geocode'];
           if (!geocode || !geocode.includes(',')) return;
 
           const [lat, lng] = geocode.split(',').map(Number);
           if (isNaN(lat) || isNaN(lng)) return;
 
-          const name = row['First Name'] || '';
-          const last = row['Last Name'] || '';
-          const biz = row['Business Name'] || '';
-          const type = row['Membership'] || '';
-
-          const popup = `
-            <strong>${name} ${last}</strong><br>
-            ${biz}<br>
-            <em>${type}</em>
-          `;
-
-          L.marker([lat, lng]).bindPopup(popup).addTo(map);
+          row.lat = lat;
+          row.lng = lng;
+          typeSet.add(row['Membership']);
         });
-      })
-      .catch(error => console.error('Error loading or parsing CSV:', error));
-  </script>
 
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
+        // Populate filter dropdown
+        const typeSelect = document.getElementById('typeFilter');
+        Array.from(typeSet).sort().forEach(type => {
+          const opt = document.createElement('option');
+          opt.value = type;
+          opt.textContent = type;
+          typeSelect.appendChild(opt);
+        });
+
+        updateMap();
+
+        document.getElementById('search').addEventListener('input', updateMap);
+        document.getElementById('typeFilter').addEventListener('change', updateMap);
+      });
+
+    function updateMap() {
+      markers.forEach(marker => map.removeLayer(marker));
+      markers = [];
+
+      const list = document.getElementById('memberList');
+      list.innerHTML = '';
+
+      const search = document.getElementById('search').value.toLowerCase();
+      const typeFilter = document.getElementById('typeFilter').value;
+
+      allData.forEach(row => {
+        const name = (row['First Name'] + ' ' + row['Last Name']).toLowerCase();
+        const biz = (row['Business Name'] || '').toLowerCase();
+
+        if (search && !name.includes(search) && !biz.includes(search)) return;
+        if (typeFilter && row['Membership'] !== typeFilter) return;
+
+        const marker = L.circleMarker([row.lat, row.lng], {
+          radius: 8,
+          fillColor: getColor(row['Membership']),
+          color: '#333',
+          weight: 1,
+          fillOpacity: 0.8
+        })
+          .bindPopup(`<strong>${row['First Name']} ${row['Last Name']}</strong><br>${row['Business Name']}<br><em>${row['Membership']}</em>`) 
+          .addTo(map);
+
+        markers.push(marker);
+
+        const div = document.createElement('div');
+        div.className = 'member';
+        div.innerHTML = `<strong>${row['First Name']} ${row['Last Name']}</strong><br>${row['Business Name']}<br><em>${row['Membership']}</em>`;
+        div.onclick = () => {
+          map.setView([row.lat, row.lng], 13);
+          marker.openPopup();
+        }
+        list.appendChild(div);
+      });
     }
-    #map {
-      height: 100%;
-      width: 100%;
+
+    function getColor(type) {
+      // Assign consistent colors per membership type
+      const colors = {
+        'Active Member - Pro': '#1f77b4',
+        'Active Member - Basic': '#2ca02c',
+        'Inactive': '#d62728',
+        'Other': '#9467bd'
+      };
+      return colors[type] || '#7f7f7f';
     }
-  </style>
+  </script>
 </body>
 </html>
