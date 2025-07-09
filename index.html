@@ -63,9 +63,9 @@
   </div>
   <div id="map"></div>
   <div class="legend">
-    <div><span style="background: #444;"></span> Member</div>
-    <div><span style="background: #1f77b4;"></span> BTA Staff</div>
-    <div><span style="background: #2ca02c;"></span> AVP</div>
+    <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/marker-icon-grey.png" width="12" height="20"> Member</div>
+    <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/marker-icon-blue.png" width="12" height="20"> BTA Staff</div>
+    <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/marker-icon-green.png" width="12" height="20"> AVP</div>
   </div>
 
   <script>
@@ -140,22 +140,13 @@
       });
     }
 
-    function getColor(type) {
-      const colors = {
-        'Member': '#444',
-        'BTA Staff': '#1f77b4',
-        'AVP': '#2ca02c'
-      };
-      return colors[type] || '#999';
-    }
-
     function getIconUrl(type) {
       const colorMap = {
         'Member': 'marker-icon-grey.png',
         'BTA Staff': 'marker-icon-blue.png',
         'AVP': 'marker-icon-green.png'
       };
-      const color = colorMap[type] || 'marker-icon.png';
+      const color = colorMap[type] || 'marker-icon-red.png';
       return `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/${color}`;
     }
   </script>
