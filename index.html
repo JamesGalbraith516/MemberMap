@@ -1,41 +1,65 @@
-<!-- Load PapaParse -->
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live Map</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<script>
-  const map = L.map('map').setView([-37.8, 144.95], 6);
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
 
-  const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSm2djr9eOyF8SI92KcfrCsrFEcW3dmaStUT4H0Ard8A1BUKKgd08owmHvG6TT7AdfPXB26pJ-Stzjw/pub?gid=528897676&single=true&output=csv';
+  <script>
+    const map = L.map('map').setView([-37.8, 144.95], 6);
 
-  fetch(sheetURL)
-    .then(response => response.text())
-    .then(csv => {
-      const parsed = Papa.parse(csv, { header: true });
-      const rows = parsed.data;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
-      rows.forEach(row => {
-        const geocode = row['Geocode'];
-        if (!geocode || !geocode.includes(',')) return;
+    const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSm2djr9eOyF8SI92KcfrCsrFEcW3dmaStUT4H0Ard8A1BUKKgd08owmHvG6TT7AdfPXB26pJ-Stzjw/pub?gid=528897676&single=true&output=csv';
 
-        const [lat, lng] = geocode.split(',').map(Number);
-        if (isNaN(lat) || isNaN(lng)) return;
+    fetch(sheetURL)
+      .then(response => response.text())
+      .then(csv => {
+        const parsed = Papa.parse(csv, { header: true });
+        const rows = parsed.data;
 
-        const name = row['First Name'] || '';
-        const last = row['Last Name'] || '';
-        const biz = row['Business Name'] || '';
-        const type = row['Membership'] || '';
+        rows.forEach(row => {
+          const geocode = row['Geocode'];
+          if (!geocode || !geocode.includes(',')) return;
 
-        const popup = `
-          <strong>${name} ${last}</strong><br>
-          ${biz}<br>
-          <em>${type}</em>
-        `;
+          const [lat, lng] = geocode.split(',').map(Number);
+          if (isNaN(lat) || isNaN(lng)) return;
 
-        L.marker([lat, lng]).bindPopup(popup).addTo(map);
-      });
-    })
-    .catch(error => console.error('Error loading or parsing CSV:', error));
-</script>
+          const name = row['First Name'] || '';
+          const last = row['Last Name'] || '';
+          const biz = row['Business Name'] || '';
+          const type = row['Membership'] || '';
+
+          const popup = `
+            <strong>${name} ${last}</strong><br>
+            ${biz}<br>
+            <em>${type}</em>
+          `;
+
+          L.marker([lat, lng]).bindPopup(popup).addTo(map);
+        });
+      })
+      .catch(error => console.error('Error loading or parsing CSV:', error));
+  </script>
+</body>
+</html>
