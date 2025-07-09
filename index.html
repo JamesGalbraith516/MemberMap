@@ -5,7 +5,7 @@
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSm2djr9eOyF8SI92KcfrCsrFEcW3dmaStUT4H0Ard8A1BUKKgd08owmHvG6TT7AdfPXB26pJ-Stzjw/pub?output=csv&gid=528897676';
+  const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSm2djr9eOyF8SI92KcfrCsrFEcW3dmaStUT4H0Ard8A1BUKKgd08owmHvG6TT7AdfPXB26pJ-Stzjw/pub?gid=528897676&single=true&output=csv';
 
   fetch(sheetURL)
     .then(response => response.text())
