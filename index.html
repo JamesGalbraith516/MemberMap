@@ -65,7 +65,7 @@
       color: white;
     }
 
-    #nearbyResultsHeader {
+    #resultsHeader {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -73,18 +73,18 @@
     }
 
     #downloadCsvBtn {
-      background-color: #ff6600;
+      background-color: #4E4E4E;
       color: white;
       border: none;
-      border-radius: 4px;
       padding: 6px 12px;
+      border-radius: 3px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
+      white-space: nowrap;
     }
 
     #downloadCsvBtn:hover {
-      background-color: #e65500;
+      background-color: #3a3a3a;
     }
 
     #nearbyList {
@@ -97,11 +97,32 @@
       font-size: 0.75rem;
       border-bottom: 1px solid rgba(255,255,255,0.3);
       padding: 0.3rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       color: white;
     }
 
     .nearby-entry:last-child {
       border-bottom: none;
+    }
+
+    .name-distance {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      font-weight: bold;
+    }
+
+    .distance {
+      flex-shrink: 0;
+      margin-left: 10px;
+      font-style: normal;
+      font-weight: normal;
+      font-size: 0.7rem;
+      opacity: 0.8;
+      min-width: 50px;
+      text-align: right;
     }
 
     #map {
@@ -124,8 +145,8 @@
 
     <div id="markerCount">No marker selected</div>
 
-    <div id="nearbyResultsHeader">
-      <h3 style="margin:0;">Nearby Results</h3>
+    <div id="resultsHeader">
+      <h3 style="margin: 0;">Results</h3>
       <button id="downloadCsvBtn">Download Results</button>
     </div>
 
@@ -147,7 +168,6 @@
     let allData = [];
     let radiusCircle = null;
     let selectedMarker = null;
-    let currentNearbyWithDistance = []; // store currently displayed nearby for CSV export
 
     const defaultIcon = new L.Icon.Default();
 
@@ -203,6 +223,7 @@
 
         document.getElementById('typeFilter').addEventListener('change', updateMap);
         document.getElementById('distanceFilter').addEventListener('input', updateMap);
+        document.getElementById('downloadCsvBtn').addEventListener('click', downloadResults);
       });
 
     function updateMap() {
@@ -215,7 +236,6 @@
       }
 
       selectedMarker = null;
-      currentNearbyWithDistance = [];
       updateMarkerCount(0);
       resetAllMarkerIcons();
 
@@ -249,14 +269,14 @@
           const selectedLatLng = marker.getLatLng();
           let nearby = findNearbyMarkers(marker, radiusKm);
 
-          // Map nearby markers with distance
+          // Add distance and sort nearby
           nearby = nearby.map(m => ({
             marker: m,
             distance: haversineDistance(selectedLatLng, m.getLatLng())
           }));
           nearby.sort((a, b) => a.distance - b.distance);
 
-          // Highlight markers
+          // Update marker icons
           nearby.forEach(entry => entry.marker.setIcon(blueIcon));
           marker.setIcon(yellowIcon);
 
@@ -271,20 +291,21 @@
           const listDiv = document.getElementById('nearbyList');
           listDiv.innerHTML = '';
 
-          // Add selected marker first with 0.0 distance
+          // Selected marker at top
           const d = marker.data;
-          const div = document.createElement('div');
-          div.className = 'nearby-entry';
-          div.innerHTML = `
-            <strong>${d['First Name']} ${d['Last Name']} (Selected)</strong>
-            <span style="float:right; font-size: 0.75rem;">0.0 km</span><br>
-            ${d['Business Name']}<br>
+          const divSelected = document.createElement('div');
+          divSelected.className = 'nearby-entry';
+          divSelected.innerHTML = `
+            <div class="name-distance">
+              <span>${d['First Name']} ${d['Last Name']} (Selected)</span>
+              <span class="distance">0.0 km</span>
+            </div>
+            <div>${d['Business Name']}</div>
             <em>${d['Membership']}</em>
           `;
-          listDiv.appendChild(div);
+          listDiv.appendChild(divSelected);
 
-          currentNearbyWithDistance = [{data: d, distance: 0}]; // include selected marker in CSV
-
+          // Sorted nearby entries
           if (nearby.length === 0) {
             const noDiv = document.createElement('div');
             noDiv.textContent = 'No nearby markers found.';
@@ -296,14 +317,14 @@
               const div = document.createElement('div');
               div.className = 'nearby-entry';
               div.innerHTML = `
-                <strong>${d['First Name']} ${d['Last Name']}</strong>
-                <span style="float:right; font-size: 0.75rem;">${distance} km</span><br>
-                ${d['Business Name']}<br>
+                <div class="name-distance">
+                  <span>${d['First Name']} ${d['Last Name']}</span>
+                  <span class="distance">${distance} km</span>
+                </div>
+                <div>${d['Business Name']}</div>
                 <em>${d['Membership']}</em>
               `;
               listDiv.appendChild(div);
-
-              currentNearbyWithDistance.push({data: d, distance: entry.distance});
             });
           }
 
@@ -363,47 +384,61 @@
       return nearby;
     }
 
-    // CSV Download Handler
-    document.getElementById('downloadCsvBtn').addEventListener('click', () => {
-      if (!selectedMarker) {
-        alert('No marker selected to export.');
+    function downloadResults() {
+      if (markers.length === 0) {
+        alert('No results to download.');
         return;
       }
 
-      if (!currentNearbyWithDistance || currentNearbyWithDistance.length === 0) {
-        alert('No nearby results to export.');
-        return;
-      }
+      const typeFilter = document.getElementById('typeFilter').value;
 
-      // Prepare CSV rows - include header
-      const headers = ['First Name', 'Last Name', 'Business Name', 'Membership', 'Type', 'Geocode', 'Distance (km)'];
-      const rows = currentNearbyWithDistance.map(item => {
-        const d = item.data;
-        return [
-          d['First Name'] || '',
-          d['Last Name'] || '',
-          d['Business Name'] || '',
-          d['Membership'] || '',
-          d['Type'] || '',
-          d['Geocode'] || '',
-          item.distance.toFixed(1)
-        ];
+      // Filter markers currently on map by type (matches updateMap filter)
+      const filteredMarkers = markers.filter(marker => {
+        if (typeFilter && marker.data['Type'] !== typeFilter) return false;
+        return true;
       });
 
-      // Convert to CSV string
-      const csvContent = [headers.join(','), ...rows.map(r => r.map(field => `"${field.replace(/"/g, '""')}"`).join(','))].join('\n');
+      if (filteredMarkers.length === 0) {
+        alert('No results to download.');
+        return;
+      }
 
-      // Trigger download
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      // Prepare data: include all columns from the original CSV for these filtered markers
+      // If selectedMarker is set but not in filteredMarkers, add it (unlikely because filteredMarkers is all markers on map)
+      if (selectedMarker && !filteredMarkers.includes(selectedMarker)) {
+        filteredMarkers.push(selectedMarker);
+      }
+
+      // Extract all columns keys to maintain CSV structure
+      const allKeysSet = new Set();
+      filteredMarkers.forEach(marker => {
+        Object.keys(marker.data).forEach(k => allKeysSet.add(k));
+      });
+      const allKeys = Array.from(allKeysSet);
+
+      // Build array of objects for Papa.unparse
+      const csvData = filteredMarkers.map(marker => {
+        const row = {};
+        allKeys.forEach(k => {
+          row[k] = marker.data[k] || '';
+        });
+        return row;
+      });
+
+      const csv = Papa.unparse(csvData);
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'nearby_results.csv';
+      a.download = 'filtered_results.csv';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    }
   </script>
 </body>
 </html>
