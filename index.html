@@ -32,7 +32,7 @@
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      font-size: 1rem; /* updated text size */
+      font-size: 1rem; /* filters text size */
       line-height: 1.2;
     }
 
@@ -64,18 +64,24 @@
       font-size: 0.75rem;
     }
 
-    #map {
-      flex: 1;
-      height: 100%;
+    /* Nearby results smaller text */
+    #nearbyList {
+      font-size: 0.75rem;
     }
 
     .nearby-entry {
+      font-size: 0.75rem;
       border-bottom: 1px solid #ddd;
       padding: 0.3rem 0;
     }
 
     .nearby-entry:last-child {
       border-bottom: none;
+    }
+
+    #map {
+      flex: 1;
+      height: 100%;
     }
   </style>
 </head>
@@ -206,7 +212,6 @@
 
           selectedMarker = marker;
 
-          // Read radius from number input, fallback to 50 if invalid
           let radiusKm = parseFloat(document.getElementById('distanceFilter').value);
           if (isNaN(radiusKm) || radiusKm <= 0) radiusKm = 50;
 
