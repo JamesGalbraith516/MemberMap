@@ -29,6 +29,36 @@
       border-right: 1px solid #ccc;
       overflow-y: auto;
       padding: 1rem;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      font-size: 0.5rem; /* reduce text size by ~50% */
+      line-height: 1.2;
+    }
+
+    /* Filters container inside sidebar */
+    #filtersContainer {
+      margin-bottom: 0.5rem;
+    }
+
+    /* Labels stacked above selects */
+    #filtersContainer label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    #filtersContainer select {
+      width: 100%;
+      margin-bottom: 1rem;
+      font-size: 0.7rem; /* smaller select text */
+      box-sizing: border-box;
+    }
+
+    #markerCount {
+      font-weight: bold;
+      margin-bottom: 1rem;
+      font-size: 0.6rem;
     }
 
     #map {
@@ -36,32 +66,9 @@
       height: 100%;
     }
 
-    #filterBar {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: white;
-      padding: 0.5rem 1rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      z-index: 1000;
-      border-radius: 6px;
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
-
-    #filterBar label {
-      font-weight: bold;
-    }
-
-    #filterBar select {
-      font-size: 1rem;
-    }
-
     .nearby-entry {
       border-bottom: 1px solid #ddd;
-      padding: 0.5rem 0;
+      padding: 0.3rem 0;
     }
 
     .nearby-entry:last-child {
@@ -71,29 +78,32 @@
 </head>
 <body>
   <div id="sidePanel">
+    <div id="filtersContainer">
+      <label for="typeFilter">Filter by Type:</label>
+      <select id="typeFilter">
+        <option value="">All Types</option>
+      </select>
+
+      <label for="distanceFilter">Distance:</label>
+      <select id="distanceFilter">
+        <option value="10">10 km</option>
+        <option value="25">25 km</option>
+        <option value="40">40 km</option>
+        <option value="50" selected>50 km</option>
+        <option value="75">75 km</option>
+        <option value="100">100 km</option>
+        <option value="120">120 km</option>
+        <option value="150">150 km</option>
+      </select>
+    </div>
+
+    <div id="markerCount">No marker selected</div>
+
     <h3>Nearby Results</h3>
     <div id="nearbyList">Click a marker to see nearby entries.</div>
   </div>
 
   <div id="map"></div>
-
-  <div id="filterBar">
-    <label for="typeFilter">Filter by Type:</label>
-    <select id="typeFilter">
-      <option value="">All Types</option>
-    </select>
-    <label for="distanceFilter">Distance:</label>
-    <select id="distanceFilter">
-      <option value="10">10 km</option>
-      <option value="25">25 km</option>
-      <option value="40">40 km</option>
-      <option value="50" selected>50 km</option>
-      <option value="75">75 km</option>
-      <option value="100">100 km</option>
-      <option value="120">120 km</option>
-      <option value="150">150 km</option>
-    </select>
-  </div>
 
   <script>
     const map = L.map('map').setView([50.5, -95.0], 4);
@@ -107,18 +117,27 @@
     let markers = [];
     let allData = [];
     let radiusCircle = null;
+    let selectedMarker = null;
 
+    // Grey icon for default markers
     const defaultIcon = L.icon({
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      shadowSize: [41, 41]
+      iconUrl: 'https://chart.googleapis.com/chart?chst=d_map_pin_icon&chld=star|999999', // grey
+      iconSize: [30, 50],
+      iconAnchor: [15, 50],
+      popupAnchor: [0, -45]
     });
 
-    const greenIcon = L.icon({
-      iconUrl: 'https://chart.googleapis.com/chart?chst=d_map_pin_icon&chld=check|00cc44',
+    // Blue icon for nearby markers
+    const nearbyIcon = L.icon({
+      iconUrl: 'https://chart.googleapis.com/chart?chst=d_map_pin_icon&chld=star|0000FF', // blue
+      iconSize: [30, 50],
+      iconAnchor: [15, 50],
+      popupAnchor: [0, -45]
+    });
+
+    // Yellow icon for selected marker
+    const selectedIcon = L.icon({
+      iconUrl: 'https://chart.googleapis.com/chart?chst=d_map_pin_icon&chld=star|FFFF00', // yellow
       iconSize: [30, 50],
       iconAnchor: [15, 50],
       popupAnchor: [0, -45]
@@ -146,6 +165,7 @@
         });
 
         updateMap();
+
         document.getElementById('typeFilter').addEventListener('change', updateMap);
         document.getElementById('distanceFilter').addEventListener('change', updateMap);
       });
@@ -158,6 +178,10 @@
         map.removeLayer(radiusCircle);
         radiusCircle = null;
       }
+
+      selectedMarker = null;
+      updateMarkerCount(0);
+      resetAllMarkerIcons();
 
       const typeFilter = document.getElementById('typeFilter').value;
 
@@ -174,8 +198,8 @@
         marker.data = row;
 
         marker.on('click', function () {
-          // Reset all markers
-          markers.forEach(m => m.setIcon(defaultIcon));
+          // Reset icons for all markers
+          resetAllMarkerIcons();
 
           // Clear old circle
           if (radiusCircle) {
@@ -183,11 +207,16 @@
             radiusCircle = null;
           }
 
+          selectedMarker = marker;
+
           const radiusKm = parseInt(document.getElementById('distanceFilter').value, 10);
           const nearby = findNearbyMarkers(marker, radiusKm);
 
-          // Highlight nearby
-          nearby.forEach(m => m.setIcon(greenIcon));
+          // Highlight nearby markers with nearbyIcon (blue)
+          nearby.forEach(m => m.setIcon(nearbyIcon));
+
+          // Change selected marker icon to yellow
+          marker.setIcon(selectedIcon);
 
           // Add circle
           radiusCircle = L.circle(marker.getLatLng(), {
@@ -217,6 +246,8 @@
             });
           }
 
+          updateMarkerCount(nearby.length);
+
           const popupHTML = `
             <strong>${marker.data['First Name']} ${marker.data['Last Name']}</strong><br>
             ${marker.data['Business Name']}<br>
@@ -229,6 +260,19 @@
         marker.addTo(map);
         markers.push(marker);
       });
+    }
+
+    function resetAllMarkerIcons() {
+      markers.forEach(m => m.setIcon(defaultIcon));
+    }
+
+    function updateMarkerCount(count) {
+      const countDiv = document.getElementById('markerCount');
+      if (count === 0) {
+        countDiv.textContent = 'No marker selected';
+      } else {
+        countDiv.textContent = `Total nearby markers: ${count}`;
+      }
     }
 
     function haversineDistance(latlng1, latlng2) {
