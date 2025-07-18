@@ -32,28 +32,26 @@
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      font-size: 1rem; /* filters text size */
+      font-size: 1rem;
       line-height: 1.2;
     }
 
-    /* Filters container inside sidebar */
     #filtersContainer {
       margin-bottom: 0.5rem;
     }
 
-    /* Labels stacked above selects */
     #filtersContainer label {
       font-weight: bold;
       display: block;
       margin-bottom: 0.2rem;
-      font-size: 1rem; /* updated label font size */
+      font-size: 1rem;
     }
 
     #filtersContainer select,
     #filtersContainer input[type="number"] {
       width: 100%;
       margin-bottom: 1rem;
-      font-size: 1rem; /* updated input/select font size */
+      font-size: 1rem;
       box-sizing: border-box;
       padding: 0.25rem 0.4rem;
     }
@@ -64,7 +62,6 @@
       font-size: 0.75rem;
     }
 
-    /* Nearby results smaller text */
     #nearbyList {
       font-size: 0.75rem;
     }
@@ -215,9 +212,18 @@
           let radiusKm = parseFloat(document.getElementById('distanceFilter').value);
           if (isNaN(radiusKm) || radiusKm <= 0) radiusKm = 50;
 
-          const nearby = findNearbyMarkers(marker, radiusKm);
+          const selectedLatLng = marker.getLatLng();
+          let nearby = findNearbyMarkers(marker, radiusKm);
 
-          nearby.forEach(m => m.setIcon(blueIcon));
+          // Add distance and sort
+          nearby = nearby.map(m => ({
+            marker: m,
+            distance: haversineDistance(selectedLatLng, m.getLatLng())
+          }));
+          nearby.sort((a, b) => a.distance - b.distance);
+
+          // Update marker icons
+          nearby.forEach(entry => entry.marker.setIcon(blueIcon));
           marker.setIcon(yellowIcon);
 
           radiusCircle = L.circle(marker.getLatLng(), {
@@ -230,17 +236,35 @@
 
           const listDiv = document.getElementById('nearbyList');
           listDiv.innerHTML = '';
+
+          // Add selected marker at the top
+          const d = marker.data;
+          const div = document.createElement('div');
+          div.className = 'nearby-entry';
+          div.innerHTML = `
+            <strong>${d['First Name']} ${d['Last Name']} (Selected)</strong><br>
+            ${d['Business Name']}<br>
+            <em>${d['Membership']}</em><br>
+            <small>0.00 km away</small>
+          `;
+          listDiv.appendChild(div);
+
+          // Add sorted nearby entries
           if (nearby.length === 0) {
-            listDiv.innerHTML = 'No nearby markers found.';
+            const noDiv = document.createElement('div');
+            noDiv.textContent = 'No nearby markers found.';
+            listDiv.appendChild(noDiv);
           } else {
-            nearby.forEach(m => {
-              const d = m.data;
+            nearby.forEach(entry => {
+              const d = entry.marker.data;
+              const distance = entry.distance.toFixed(2);
               const div = document.createElement('div');
               div.className = 'nearby-entry';
               div.innerHTML = `
                 <strong>${d['First Name']} ${d['Last Name']}</strong><br>
                 ${d['Business Name']}<br>
-                <em>${d['Membership']}</em>
+                <em>${d['Membership']}</em><br>
+                <small>${distance} km away</small>
               `;
               listDiv.appendChild(div);
             });
@@ -279,7 +303,6 @@
       const R = 6371;
       const dLat = (latlng2.lat - latlng1.lat) * Math.PI / 180;
       const dLon = (latlng2.lng - latlng1.lng) * Math.PI / 180;
-
       const a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos(latlng1.lat * Math.PI / 180) * Math.cos(latlng2.lat * Math.PI / 180) *
