@@ -32,7 +32,7 @@
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      font-size: 0.75rem; /* updated text size */
+      font-size: 1rem; /* updated text size */
       line-height: 1.2;
     }
 
@@ -46,13 +46,16 @@
       font-weight: bold;
       display: block;
       margin-bottom: 0.2rem;
+      font-size: 1rem; /* updated label font size */
     }
 
-    #filtersContainer select {
+    #filtersContainer select,
+    #filtersContainer input[type="number"] {
       width: 100%;
       margin-bottom: 1rem;
-      font-size: 0.75rem; /* match reduced text size */
+      font-size: 1rem; /* updated input/select font size */
       box-sizing: border-box;
+      padding: 0.25rem 0.4rem;
     }
 
     #markerCount {
@@ -84,17 +87,8 @@
         <option value="">All Types</option>
       </select>
 
-      <label for="distanceFilter">Distance:</label>
-      <select id="distanceFilter">
-        <option value="10">10 km</option>
-        <option value="25">25 km</option>
-        <option value="40">40 km</option>
-        <option value="50" selected>50 km</option>
-        <option value="75">75 km</option>
-        <option value="100">100 km</option>
-        <option value="120">120 km</option>
-        <option value="150">150 km</option>
-      </select>
+      <label for="distanceFilter">Distance (km):</label>
+      <input type="number" id="distanceFilter" min="1" max="1000" step="1" value="50" />
     </div>
 
     <div id="markerCount">No marker selected</div>
@@ -119,11 +113,8 @@
     let radiusCircle = null;
     let selectedMarker = null;
 
-    // Default Leaflet blue marker icon (built-in)
     const defaultIcon = new L.Icon.Default();
 
-    // For selected and nearby, use different colored marker icons from https://github.com/pointhi/leaflet-color-markers
-    // These are popular colored markers that match Leaflet style:
     const blueIcon = new L.Icon({
       iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
       shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
@@ -175,7 +166,7 @@
         updateMap();
 
         document.getElementById('typeFilter').addEventListener('change', updateMap);
-        document.getElementById('distanceFilter').addEventListener('change', updateMap);
+        document.getElementById('distanceFilter').addEventListener('input', updateMap);
       });
 
     function updateMap() {
@@ -206,10 +197,8 @@
         marker.data = row;
 
         marker.on('click', function () {
-          // Reset icons for all markers
           resetAllMarkerIcons();
 
-          // Clear old circle
           if (radiusCircle) {
             map.removeLayer(radiusCircle);
             radiusCircle = null;
@@ -217,16 +206,15 @@
 
           selectedMarker = marker;
 
-          const radiusKm = parseInt(document.getElementById('distanceFilter').value, 10);
+          // Read radius from number input, fallback to 50 if invalid
+          let radiusKm = parseFloat(document.getElementById('distanceFilter').value);
+          if (isNaN(radiusKm) || radiusKm <= 0) radiusKm = 50;
+
           const nearby = findNearbyMarkers(marker, radiusKm);
 
-          // Highlight nearby markers with blueIcon
           nearby.forEach(m => m.setIcon(blueIcon));
-
-          // Change selected marker icon to yellowIcon
           marker.setIcon(yellowIcon);
 
-          // Add circle
           radiusCircle = L.circle(marker.getLatLng(), {
             radius: radiusKm * 1000,
             color: '#999',
@@ -235,7 +223,6 @@
             weight: 1
           }).addTo(map);
 
-          // List in side panel
           const listDiv = document.getElementById('nearbyList');
           listDiv.innerHTML = '';
           if (nearby.length === 0) {
