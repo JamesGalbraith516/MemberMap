@@ -91,15 +91,14 @@
       font-size: 0.75rem;
       padding-top: 15px;
       color: white;
+      overflow-wrap: break-word;
     }
 
     .nearby-entry {
-      font-size: 0.75rem;
+      padding: 0.5rem 0.3rem;
       border-bottom: 1px solid rgba(255,255,255,0.3);
-      padding: 0.3rem 0;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
       color: white;
     }
 
@@ -107,22 +106,30 @@
       border-bottom: none;
     }
 
+    .nearby-entry > div,
+    .nearby-entry > em {
+      margin-top: 0.2rem;
+    }
+
     .name-distance {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       width: 100%;
       font-weight: bold;
+      gap: 10px;
+      white-space: nowrap;
     }
 
     .distance {
       flex-shrink: 0;
-      margin-left: 10px;
+      min-width: 50px;
+      text-align: right;
       font-style: normal;
       font-weight: normal;
       font-size: 0.7rem;
       opacity: 0.8;
-      min-width: 50px;
-      text-align: right;
+      white-space: nowrap;
     }
 
     #map {
