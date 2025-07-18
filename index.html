@@ -126,7 +126,7 @@
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
       <h3 style="margin: 0; font-size: 1em;">Nearby Results</h3>
-      <button id="downloadCsvBtn" style="font-size: 0.75em;">Download CSV</button>
+      <button id="downloadCsvBtn" style="font-size: 0.75em;">Download Results</button>
     </div>
     <div id="nearbyList">Click a marker to see nearby entries.</div>
   </div>
@@ -154,7 +154,7 @@
     let allData = [];
     let radiusCircle = null;
     let selectedMarker = null;
-    let nearby = []; // to keep current nearby for CSV export
+    let nearby = []; // nearby markers array for export
 
     const defaultIcon = new L.Icon.Default();
 
@@ -256,7 +256,7 @@
           const selectedLatLng = marker.getLatLng();
           let foundNearby = findNearbyMarkers(marker, radiusKm);
 
-          // Add distance and sort
+          // Add distance and sort nearby markers
           nearby = foundNearby.map(m => ({
             marker: m,
             distance: haversineDistance(selectedLatLng, m.getLatLng())
@@ -392,12 +392,19 @@
     }
 
     document.getElementById("downloadCsvBtn").onclick = () => {
-      if (!nearby || nearby.length === 0) {
+      if (!selectedMarker) {
         document.getElementById('noResultsModal').style.display = 'flex';
         return;
       }
-      const nearbyData = nearby.map(entry => entry.marker.data);
-      downloadCSV(nearbyData);
+
+      // Compose export data including selected marker at top
+      const exportData = [selectedMarker.data, ...nearby.map(entry => entry.marker.data)];
+
+      if (exportData.length === 0) {
+        document.getElementById('noResultsModal').style.display = 'flex';
+        return;
+      }
+      downloadCSV(exportData);
     };
   </script>
 </body>
