@@ -32,7 +32,7 @@
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      font-size: 0.75rem;
+      font-size: 1rem;
       line-height: 1.2;
     }
 
@@ -44,13 +44,14 @@
       font-weight: bold;
       display: block;
       margin-bottom: 0.2rem;
+      font-size: 1rem;
     }
 
     #filtersContainer select,
     #filtersContainer input[type="number"] {
       width: 100%;
       margin-bottom: 1rem;
-      font-size: 0.75rem;
+      font-size: 1rem;
       box-sizing: border-box;
       padding: 0.25rem 0.4rem;
     }
@@ -58,6 +59,7 @@
     #markerCount {
       font-weight: bold;
       margin-bottom: 1rem;
+      font-size: 0.75rem;
     }
 
     #nearbyList {
@@ -65,6 +67,7 @@
     }
 
     .nearby-entry {
+      font-size: 0.75rem;
       border-bottom: 1px solid #ddd;
       padding: 0.3rem 0;
     }
@@ -76,6 +79,34 @@
     #map {
       flex: 1;
       height: 100%;
+    }
+
+    /* Modal for no results warning */
+    #noResultsModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #noResultsModal > div {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      width: 300px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    #noResultsModal button {
+      margin-top: 10px;
+      padding: 6px 12px;
+      font-size: 1rem;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -93,11 +124,22 @@
 
     <div id="markerCount">No marker selected</div>
 
-    <h3>Nearby Results</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+      <h3 style="margin: 0; font-size: 1em;">Nearby Results</h3>
+      <button id="downloadCsvBtn" style="font-size: 0.75em;">Download CSV</button>
+    </div>
     <div id="nearbyList">Click a marker to see nearby entries.</div>
   </div>
 
   <div id="map"></div>
+
+  <!-- Modal for no results -->
+  <div id="noResultsModal">
+    <div>
+      <p>No results to export.</p>
+      <button onclick="document.getElementById('noResultsModal').style.display='none'">OK</button>
+    </div>
+  </div>
 
   <script>
     const map = L.map('map').setView([50.5, -95.0], 4);
@@ -112,6 +154,9 @@
     let allData = [];
     let radiusCircle = null;
     let selectedMarker = null;
+    let nearby = []; // to keep current nearby for CSV export
+
+    const defaultIcon = new L.Icon.Default();
 
     const blueIcon = new L.Icon({
       iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
@@ -179,6 +224,7 @@
       selectedMarker = null;
       updateMarkerCount(0);
       resetAllMarkerIcons();
+      nearby = [];
 
       const typeFilter = document.getElementById('typeFilter').value;
 
@@ -208,14 +254,16 @@
           if (isNaN(radiusKm) || radiusKm <= 0) radiusKm = 50;
 
           const selectedLatLng = marker.getLatLng();
-          let nearby = findNearbyMarkers(marker, radiusKm);
+          let foundNearby = findNearbyMarkers(marker, radiusKm);
 
-          nearby = nearby.map(m => ({
+          // Add distance and sort
+          nearby = foundNearby.map(m => ({
             marker: m,
             distance: haversineDistance(selectedLatLng, m.getLatLng())
           }));
           nearby.sort((a, b) => a.distance - b.distance);
 
+          // Update marker icons
           nearby.forEach(entry => entry.marker.setIcon(blueIcon));
           marker.setIcon(yellowIcon);
 
@@ -230,17 +278,21 @@
           const listDiv = document.getElementById('nearbyList');
           listDiv.innerHTML = '';
 
+          // Add selected marker at the top with distance 0.0
           const d = marker.data;
-          const div = document.createElement('div');
-          div.className = 'nearby-entry';
-          div.innerHTML = `
-            <strong>${d['First Name']} ${d['Last Name']} (Selected)</strong><br>
+          const divSelected = document.createElement('div');
+          divSelected.className = 'nearby-entry';
+          divSelected.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+              <strong>${d['First Name']} ${d['Last Name']} (Selected)</strong>
+              <small style="font-size: 0.75em;">0.0 km</small>
+            </div>
             ${d['Business Name']}<br>
-            <em>${d['Membership']}</em><br>
-            <small>0.00 km away</small>
+            <em>${d['Membership']}</em>
           `;
-          listDiv.appendChild(div);
+          listDiv.appendChild(divSelected);
 
+          // Add sorted nearby entries
           if (nearby.length === 0) {
             const noDiv = document.createElement('div');
             noDiv.textContent = 'No nearby markers found.';
@@ -248,14 +300,16 @@
           } else {
             nearby.forEach(entry => {
               const d = entry.marker.data;
-              const distance = entry.distance.toFixed(2);
+              const distFixed = entry.distance.toFixed(1);
               const div = document.createElement('div');
               div.className = 'nearby-entry';
               div.innerHTML = `
-                <strong>${d['First Name']} ${d['Last Name']}</strong><br>
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                  <strong>${d['First Name']} ${d['Last Name']}</strong>
+                  <small style="font-size: 0.75em;">${distFixed} km</small>
+                </div>
                 ${d['Business Name']}<br>
-                <em>${d['Membership']}</em><br>
-                <small>${distance} km away</small>
+                <em>${d['Membership']}</em>
               `;
               listDiv.appendChild(div);
             });
@@ -303,19 +357,48 @@
     }
 
     function findNearbyMarkers(clickedMarker, radiusKm) {
-      const nearby = [];
+      const nearbyMarkers = [];
       const clickedLatLng = clickedMarker.getLatLng();
 
       markers.forEach(marker => {
         if (marker === clickedMarker) return;
         const dist = haversineDistance(clickedLatLng, marker.getLatLng());
         if (dist <= radiusKm) {
-          nearby.push(marker);
+          nearbyMarkers.push(marker);
         }
       });
 
-      return nearby;
+      return nearbyMarkers;
     }
+
+    function downloadCSV(data) {
+      if (data.length === 0) return;
+
+      const headers = Object.keys(data[0]);
+      const rows = data.map(row =>
+        headers.map(field => `"${(row[field] || '').toString().replace(/"/g, '""')}"`).join(",")
+      );
+
+      const csvContent = [headers.join(","), ...rows].join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "nearby_results.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    document.getElementById("downloadCsvBtn").onclick = () => {
+      if (!nearby || nearby.length === 0) {
+        document.getElementById('noResultsModal').style.display = 'flex';
+        return;
+      }
+      const nearbyData = nearby.map(entry => entry.marker.data);
+      downloadCSV(nearbyData);
+    };
   </script>
 </body>
 </html>
