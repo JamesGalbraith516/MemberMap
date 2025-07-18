@@ -27,9 +27,14 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       z-index: 1000;
       border-radius: 6px;
+      display: flex;
+      gap: 1rem;
     }
     #filterBar select {
       font-size: 1rem;
+    }
+    .highlight-marker {
+      filter: drop-shadow(0 0 5px #1e90ff);
     }
   </style>
 </head>
@@ -37,6 +42,14 @@
   <div id="filterBar">
     <select id="typeFilter">
       <option value="">All Types</option>
+    </select>
+    <select id="distanceFilter">
+      <option value="10">10 km</option>
+      <option value="25">25 km</option>
+      <option value="50" selected>50 km</option>
+      <option value="100">100 km</option>
+      <option value="250">250 km</option>
+      <option value="500">500 km</option>
     </select>
   </div>
   <div id="map"></div>
@@ -52,6 +65,7 @@
 
     let markers = [];
     let allData = [];
+    let radiusCircle = null;
 
     fetch(sheetURL)
       .then(response => response.text())
@@ -60,15 +74,12 @@
         allData = parsed.data;
 
         const typeSet = new Set();
-
         allData.forEach(row => {
           const geocode = row['Geocode'];
           if (!geocode || !geocode.includes(',')) return;
-
           typeSet.add(row['Type']);
         });
 
-        // Populate filter dropdown
         const typeSelect = document.getElementById('typeFilter');
         Array.from(typeSet).sort().forEach(type => {
           const opt = document.createElement('option');
@@ -80,11 +91,19 @@
         updateMap();
 
         document.getElementById('typeFilter').addEventListener('change', updateMap);
+        document.getElementById('distanceFilter').addEventListener('change', () => {
+          updateMap(); // reattach marker clicks with new radius
+        });
       });
 
     function updateMap() {
       markers.forEach(marker => map.removeLayer(marker));
       markers = [];
+
+      if (radiusCircle) {
+        map.removeLayer(radiusCircle);
+        radiusCircle = null;
+      }
 
       const typeFilter = document.getElementById('typeFilter').value;
 
@@ -97,12 +116,73 @@
         const [lat, lng] = geocode.split(',').map(Number);
         if (isNaN(lat) || isNaN(lng)) return;
 
-        const marker = L.marker([lat, lng])
-          .bindPopup(`<strong>${row['First Name']} ${row['Last Name']}</strong><br>${row['Business Name']}<br><em>${row['Membership']}</em>`)
-          .addTo(map);
+        const marker = L.marker([lat, lng]);
 
+        marker.data = row;
+
+        marker.on('click', function () {
+          // Reset highlight and circle
+          markers.forEach(m => m.getElement()?.classList.remove('highlight-marker'));
+          if (radiusCircle) {
+            map.removeLayer(radiusCircle);
+            radiusCircle = null;
+          }
+
+          const radiusKm = parseInt(document.getElementById('distanceFilter').value, 10);
+          const nearby = findNearbyMarkers(marker, radiusKm);
+
+          // Highlight nearby
+          nearby.forEach(m => m.getElement()?.classList.add('highlight-marker'));
+
+          // Add radius circle
+          radiusCircle = L.circle(marker.getLatLng(), {
+            radius: radiusKm * 1000,
+            color: '#999',
+            fillColor: '#ccc',
+            fillOpacity: 0.15,
+            weight: 1
+          }).addTo(map);
+
+          const popupHTML = `
+            <strong>${row['First Name']} ${row['Last Name']}</strong><br>
+            ${row['Business Name']}<br>
+            <em>${row['Membership']}</em><br><br>
+            <strong>${nearby.length} nearby markers within ${radiusKm} km</strong>
+          `;
+          marker.bindPopup(popupHTML).openPopup();
+        });
+
+        marker.addTo(map);
         markers.push(marker);
       });
+    }
+
+    function haversineDistance(latlng1, latlng2) {
+      const R = 6371;
+      const dLat = (latlng2.lat - latlng1.lat) * Math.PI / 180;
+      const dLon = (latlng2.lng - latlng1.lng) * Math.PI / 180;
+
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(latlng1.lat * Math.PI / 180) * Math.cos(latlng2.lat * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function findNearbyMarkers(clickedMarker, radiusKm) {
+      const nearby = [];
+      const clickedLatLng = clickedMarker.getLatLng();
+
+      markers.forEach(marker => {
+        if (marker === clickedMarker) return;
+        const dist = haversineDistance(clickedLatLng, marker.getLatLng());
+        if (dist <= radiusKm) {
+          nearby.push(marker);
+        }
+      });
+
+      return nearby;
     }
   </script>
 </body>
