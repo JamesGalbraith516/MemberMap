@@ -204,7 +204,7 @@ function updateMarkerCount(count) {
 }
 
 function haversineDistance(latlng1, latlng2) {
-  const R = 6371;
+  const R = 6371; // Earth radius in km
   const dLat = (latlng2.lat - latlng1.lat) * Math.PI / 180;
   const dLon = (latlng2.lng - latlng1.lng) * Math.PI / 180;
   const a =
@@ -250,6 +250,7 @@ function downloadResults() {
   }
 
   // Prepare data: include all columns from the original CSV for these filtered markers
+  // If selectedMarker is set but not in filteredMarkers, add it (unlikely because filteredMarkers is all markers on map)
   if (selectedMarker && !filteredMarkers.includes(selectedMarker)) {
     filteredMarkers.push(selectedMarker);
   }
