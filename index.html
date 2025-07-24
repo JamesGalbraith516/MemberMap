@@ -5,16 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Live Map with Filters</title>
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+
 </head>
 <body>
   <div id="sidePanel">
-    <div id="sidebarToggle" title="Toggle Sidebar">&#x276E;</div>
-
     <div id="filtersContainer">
       <label for="typeFilter">Filter by Type:</label>
       <select id="typeFilter">
@@ -35,15 +31,15 @@
     <div id="nearbyList">Click a marker to see nearby entries.</div>
   </div>
 
-  <!-- Zoom control wrapper -->
   <div id="zoomWrapper"></div>
 
   <div id="map"></div>
 
+  <div id="sidebarToggle">&#x276E;</div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
-  <script src="data-loader.js"></script>
+  
   <script src="map-logic.js"></script>
   <script src="ui-handlers.js"></script>
 </body>
