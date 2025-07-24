@@ -503,41 +503,51 @@
     }
 
     function downloadResults() {
-      if (markers.length === 0) {
-        alert('No results to download.');
+      // Check if a marker is selected
+      if (!selectedMarker) {
+        showErrorModal('No Results', 'Please select a marker first to download nearby results.');
         return;
       }
 
-      const typeFilter = document.getElementById('typeFilter').value;
+      const radiusKm = parseFloat(document.getElementById('distanceFilter').value) || 50;
+      const selectedLatLng = selectedMarker.getLatLng();
+      let nearby = findNearbyMarkers(selectedMarker, radiusKm);
 
-      // Filter markers currently on map by type (matches updateMap filter)
-      const filteredMarkers = markers.filter(marker => {
-        if (typeFilter && marker.data['Type'] !== typeFilter) return false;
-        return true;
-      });
+      // Add distance and sort nearby
+      nearby = nearby.map(m => ({
+        marker: m,
+        distance: haversineDistance(selectedLatLng, m.getLatLng())
+      }));
+      nearby.sort((a, b) => a.distance - b.distance);
 
-      if (filteredMarkers.length === 0) {
-        alert('No results to download.');
-        return;
-      }
-
-      // Prepare data: include all columns from the original CSV for these filtered markers
-      if (selectedMarker && !filteredMarkers.includes(selectedMarker)) {
-        filteredMarkers.push(selectedMarker);
-      }
-
-      // Extract all columns keys to maintain CSV structure
+      // Prepare data: selected marker first, then sorted nearby markers
+      const csvMarkers = [selectedMarker, ...nearby.map(entry => entry.marker)];
+      
+      // Extract all column keys to maintain CSV structure
       const allKeysSet = new Set();
-      filteredMarkers.forEach(marker => {
+      csvMarkers.forEach(marker => {
         Object.keys(marker.data).forEach(k => allKeysSet.add(k));
       });
       const allKeys = Array.from(allKeysSet);
 
+      // Add distance column
+      if (!allKeys.includes('Distance (km)')) {
+        allKeys.push('Distance (km)');
+      }
+
       // Build array of objects for Papa.unparse
-      const csvData = filteredMarkers.map(marker => {
+      const csvData = csvMarkers.map((marker, index) => {
         const row = {};
         allKeys.forEach(k => {
-          row[k] = marker.data[k] || '';
+          if (k === 'Distance (km)') {
+            if (index === 0) {
+              row[k] = '0.0'; // Selected marker
+            } else {
+              row[k] = nearby[index - 1].distance.toFixed(1);
+            }
+          } else {
+            row[k] = marker.data[k] || '';
+          }
         });
         return row;
       });
@@ -548,13 +558,96 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'filtered_results.csv';
+      a.download = 'nearby_results.csv';
       document.body.appendChild(a);
       a.click();
       setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 100);
+    }
+
+    function showErrorModal(title, message) {
+      // Create modal overlay
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      `;
+
+      // Create modal content
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        background: white;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+      `;
+
+      const titleEl = document.createElement('h3');
+      titleEl.textContent = title;
+      titleEl.style.cssText = `
+        margin: 0 0 16px 0;
+        color: #333;
+        font-size: 18px;
+      `;
+
+      const messageEl = document.createElement('p');
+      messageEl.textContent = message;
+      messageEl.style.cssText = `
+        margin: 0 0 20px 0;
+        color: #666;
+        font-size: 14px;
+        line-height: 1.4;
+      `;
+
+      const okButton = document.createElement('button');
+      okButton.textContent = 'OK';
+      okButton.style.cssText = `
+        background: #007ACC;
+        color: white;
+        border: none;
+        padding: 8px 24px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      `;
+
+      okButton.addEventListener('click', () => {
+        document.body.removeChild(overlay);
+      });
+
+      okButton.addEventListener('mouseenter', () => {
+        okButton.style.background = '#005a9e';
+      });
+
+      okButton.addEventListener('mouseleave', () => {
+        okButton.style.background = '#007ACC';
+      });
+
+      modal.appendChild(titleEl);
+      modal.appendChild(messageEl);
+      modal.appendChild(okButton);
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      // Close on overlay click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          document.body.removeChild(overlay);
+        }
+      });
     }
   </script>
 </body>
