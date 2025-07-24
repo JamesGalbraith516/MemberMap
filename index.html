@@ -51,9 +51,9 @@
     #collapseButton {
       position: absolute;
       top: 50%;
-      right: -30px; /* Extend 30px from right edge */
+      right: -32px; /* Extend 32px from right edge to account for border */
       transform: translateY(-50%);
-      width: 30px;
+      width: 32px;
       height: 60px;
       background: white;
       border: 2px solid #007ACC;
@@ -67,7 +67,7 @@
       justify-content: center;
       transition: all 0.3s ease;
       user-select: none;
-      z-index: 1001;
+      z-index: 1002; /* Higher than map to ensure visibility */
       box-shadow: 2px 0 8px rgba(0,0,0,0.2); /* Shadow on right side only */
     }
 
@@ -77,7 +77,7 @@
     }
 
     #collapseButton.collapsed {
-      right: -30px; /* Keep same position */
+      right: -32px; /* Keep same position */
     }
 
     #collapseButton.collapsed:hover {
@@ -208,7 +208,7 @@
       height: 100%;
       width: 100%;
       position: relative;
-      z-index: 1;
+      z-index: 1; /* Lower z-index than the tab */
     }
 
     /* Marker glow on hover */
