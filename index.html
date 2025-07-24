@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Live Member Map with Collapsible Sidebar</title>
+  <title>Live Map with Filters and Collapsible Sidebar</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Leaflet CSS -->
@@ -48,16 +48,18 @@
       transition: transform 0.3s ease;
       display: flex;
       flex-direction: column;
+      font-size: 1rem;
+      line-height: 1.2;
     }
 
     /* When collapsed, shift sidebar left except small blue strip */
     #sidePanel.collapsed {
       transform: translateX(-280px);
-      width: 300px; /* Keep width so toggle button position stays correct */
+      width: 300px; /* Keep width so toggle stays aligned */
       padding: 0;
     }
 
-    /* Hide all content except toggle when collapsed */
+    /* Hide all except toggle and small blue strip when collapsed */
     #sidePanel.collapsed > *:not(#sidebarToggle) {
       display: none;
     }
@@ -83,15 +85,64 @@
       z-index: 1100;
     }
 
-    /* Toggle moves left with sidebar */
+    /* Move toggle left when sidebar collapsed */
     #sidePanel.collapsed + #sidebarToggle {
       left: 20px;
+    }
+
+    /* Filter styling */
+    #filtersContainer {
+      margin-bottom: 0.5rem;
+    }
+
+    #filtersContainer label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 0.2rem;
+      font-size: 1rem;
+      color: white;
+    }
+
+    #filtersContainer select,
+    #filtersContainer input[type="number"] {
+      width: 100%;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+      box-sizing: border-box;
+      padding: 0.25rem 0.4rem;
+      border-radius: 4px;
+      border: none;
     }
 
     #markerCount {
       font-weight: bold;
       margin-bottom: 1rem;
       font-size: 0.85rem;
+      color: white;
+    }
+
+    #resultsHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+      margin-bottom: 0.5rem;
+    }
+
+    #downloadCsvBtn {
+      background-color: #4e4e4e;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      transition: background-color 0.3s ease;
+    }
+
+    #downloadCsvBtn:hover {
+      background-color: #3a3a3a;
     }
 
     #nearbyList {
@@ -100,38 +151,45 @@
       overflow-y: auto;
       color: white;
       margin-top: 0.5rem;
+      overflow-wrap: break-word;
     }
 
     .nearby-entry {
       padding: 0.4rem 0.2rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.2);
       cursor: pointer;
-      white-space: nowrap;
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .nearby-entry:last-child {
+      border-bottom: none;
     }
 
     .nearby-entry:hover {
       background-color: rgba(255, 255, 255, 0.15);
     }
 
-    .nearby-entry .distance {
+    .distance {
       font-weight: normal;
       font-size: 0.75rem;
       opacity: 0.8;
       min-width: 50px;
       text-align: right;
+      font-style: normal;
     }
 
+    /* Glowing effect on marker icon */
     .glowing-marker {
       filter: drop-shadow(0 0 5px #00caff) drop-shadow(0 0 10px #00caff);
       z-index: 1000 !important;
       transition: filter 0.3s ease;
     }
 
-    /* Leaflet zoom control positioned relative to sidebar */
+    /* Leaflet zoom control positioned relative to sidebar toggle */
     .leaflet-control-zoom {
       position: absolute !important;
       top: 10px !important;
@@ -144,7 +202,23 @@
 <body>
   <div id="container">
     <div id="sidePanel">
+      <div id="filtersContainer">
+        <label for="typeFilter">Filter by Type:</label>
+        <select id="typeFilter">
+          <option value="">All Types</option>
+        </select>
+
+        <label for="distanceFilter">Distance (km):</label>
+        <input type="number" id="distanceFilter" min="1" max="1000" step="1" value="50" />
+      </div>
+
       <div id="markerCount">No marker selected</div>
+
+      <div id="resultsHeader">
+        <h3 style="margin: 0;">Results</h3>
+        <button id="downloadCsvBtn">Download Results</button>
+      </div>
+
       <div id="nearbyList">Click a marker to see nearby entries.</div>
     </div>
 
@@ -183,56 +257,239 @@
     let markers = [];
     let allData = [];
     let selectedMarker = null;
+    let radiusCircle = null;
 
     const sidePanel = document.getElementById("sidePanel");
     const sidebarToggle = document.getElementById("sidebarToggle");
     const nearbyList = document.getElementById("nearbyList");
     const markerCount = document.getElementById("markerCount");
+    const typeFilterSelect = document.getElementById("typeFilter");
+    const distanceInput = document.getElementById("distanceFilter");
+    const downloadBtn = document.getElementById("downloadCsvBtn");
 
-    // Load and parse CSV from Google Sheets
+    // Icons for markers
+    const defaultIcon = new L.Icon.Default();
+
+    const blueIcon = new L.Icon({
+      iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    const yellowIcon = new L.Icon({
+      iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png",
+      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    const greyIcon = new L.Icon({
+      iconUrl:
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-grey.png",
+      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    // Load CSV data
     fetch(sheetURL)
       .then((res) => res.text())
       .then((csv) => {
         const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
         allData = parsed.data;
 
-        allData.forEach((row, i) => {
-          const geocode = row["Geocode"];
-          if (!geocode || !geocode.includes(",")) return;
+        // Populate type filter options dynamically
+        const typeSet = new Set();
+        allData.forEach((row) => {
+          if (row["Geocode"] && row["Geocode"].includes(",")) {
+            typeSet.add(row["Type"]);
+          }
+        });
 
-          const [lat, lng] = geocode.split(",").map(Number);
-          if (isNaN(lat) || isNaN(lng)) return;
-
-          const marker = L.marker([lat, lng]);
-          marker.data = row;
-
-          marker.on("click", () => {
-            if (selectedMarker) resetMarkerIcon(selectedMarker);
-            selectedMarker = marker;
-
-            highlightMarker(marker);
-            showNearby(marker);
+        Array.from(typeSet)
+          .sort()
+          .forEach((type) => {
+            const opt = document.createElement("option");
+            opt.value = type;
+            opt.textContent = type;
+            typeFilterSelect.appendChild(opt);
           });
 
-          marker.addTo(map);
-          markers.push(marker);
-        });
+        updateMap();
+
+        typeFilterSelect.addEventListener("change", updateMap);
+        distanceInput.addEventListener("input", updateMap);
+        downloadBtn.addEventListener("click", downloadResults);
       });
 
-    function resetMarkerIcon(marker) {
-      if (marker && marker._icon) {
-        marker._icon.classList.remove("glowing-marker");
+    function updateMap() {
+      // Remove old markers and circle
+      markers.forEach((m) => map.removeLayer(m));
+      markers = [];
+
+      if (radiusCircle) {
+        map.removeLayer(radiusCircle);
+        radiusCircle = null;
+      }
+
+      selectedMarker = null;
+      updateMarkerCount(0);
+
+      const typeFilter = typeFilterSelect.value;
+      allData.forEach((row) => {
+        if (typeFilter && row["Type"] !== typeFilter) return;
+
+        const geocode = row["Geocode"];
+        if (!geocode || !geocode.includes(",")) return;
+
+        const [lat, lng] = geocode.split(",").map(Number);
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        const marker = L.marker([lat, lng], { icon: greyIcon });
+        marker.data = row;
+
+        marker.on("click", function () {
+          // Reset icons
+          markers.forEach((m) => m.setIcon(greyIcon));
+
+          if (radiusCircle) {
+            map.removeLayer(radiusCircle);
+            radiusCircle = null;
+          }
+
+          selectedMarker = marker;
+
+          let radiusKm = parseFloat(distanceInput.value);
+          if (isNaN(radiusKm) || radiusKm <= 0) radiusKm = 50;
+
+          const selectedLatLng = marker.getLatLng();
+
+          // Find nearby markers within radius
+          let nearby = findNearbyMarkers(marker, radiusKm);
+
+          // Calculate distances & sort ascending
+          nearby = nearby
+            .map((m) => ({
+              marker: m,
+              distance: haversineDistance(selectedLatLng, m.getLatLng()),
+            }))
+            .sort((a, b) => a.distance - b.distance);
+
+          // Update icons
+          nearby.forEach((entry) => entry.marker.setIcon(blueIcon));
+          marker.setIcon(yellowIcon);
+
+          // Draw radius circle
+          radiusCircle = L.circle(marker.getLatLng(), {
+            radius: radiusKm * 1000,
+            color: "#999",
+            fillColor: "#ccc",
+            fillOpacity: 0.15,
+            weight: 1,
+          }).addTo(map);
+
+          // Update nearby list
+          updateNearbyList(marker, nearby, radiusKm);
+
+          updateMarkerCount(nearby.length);
+
+          // Popup
+          const popupHTML = `
+            <strong>${marker.data["First Name"]} ${marker.data["Last Name"]}</strong><br>
+            ${marker.data["Business Name"]}<br>
+            <em>${marker.data["Membership"]}</em><br><br>
+            <strong>${nearby.length} nearby markers within ${radiusKm} km</strong>
+          `;
+          marker.bindPopup(popupHTML).openPopup();
+        });
+
+        marker.addTo(map);
+        markers.push(marker);
+      });
+    }
+
+    function updateNearbyList(selectedMarker, nearby, radiusKm) {
+      nearbyList.innerHTML = "";
+
+      // Selected marker at top
+      const d = selectedMarker.data;
+      const divSelected = document.createElement("div");
+      divSelected.className = "nearby-entry";
+      divSelected.innerHTML = `
+            <div class="name-distance" style="display:flex; justify-content: space-between; width: 100%; font-weight:bold;">
+              <span>${d["First Name"]} ${d["Last Name"]} (Selected)</span>
+              <span class="distance">0.0 km</span>
+            </div>
+            <div>${d["Business Name"]}</div>
+            <em>${d["Membership"]}</em>
+          `;
+      nearbyList.appendChild(divSelected);
+
+      if (nearby.length === 0) {
+        const noDiv = document.createElement("div");
+        noDiv.textContent = "No nearby markers found.";
+        nearbyList.appendChild(noDiv);
+      } else {
+        nearby.forEach(({ marker, distance }) => {
+          const d = marker.data;
+          const distanceFixed = distance.toFixed(1);
+          const div = document.createElement("div");
+          div.className = "nearby-entry";
+          div.innerHTML = `
+              <div class="name-distance" style="display:flex; justify-content: space-between; width: 100%;">
+                <span>${d["First Name"]} ${d["Last Name"]}</span>
+                <span class="distance">${distanceFixed} km</span>
+              </div>
+              <div>${d["Business Name"]}</div>
+              <em>${d["Membership"]}</em>
+            `;
+          nearbyList.appendChild(div);
+
+          // Glow on hover on sidebar list entry
+          div.addEventListener("mouseenter", () => {
+            if (marker._icon) marker._icon.classList.add("glowing-marker");
+          });
+          div.addEventListener("mouseleave", () => {
+            if (marker._icon) marker._icon.classList.remove("glowing-marker");
+          });
+        });
       }
     }
 
-    function highlightMarker(marker) {
-      if (marker && marker._icon) {
-        marker._icon.classList.add("glowing-marker");
+    function updateMarkerCount(count) {
+      if (count === 0) {
+        markerCount.textContent = "No marker selected";
+      } else {
+        markerCount.textContent = `Total nearby markers: ${count}`;
       }
+    }
+
+    function findNearbyMarkers(clickedMarker, radiusKm) {
+      const nearby = [];
+      const clickedLatLng = clickedMarker.getLatLng();
+
+      markers.forEach((marker) => {
+        if (marker === clickedMarker) return;
+        const dist = haversineDistance(clickedLatLng, marker.getLatLng());
+        if (dist <= radiusKm) {
+          nearby.push(marker);
+        }
+      });
+
+      return nearby;
     }
 
     function haversineDistance(latlng1, latlng2) {
-      const R = 6371; // km
+      const R = 6371;
       const dLat = ((latlng2.lat - latlng1.lat) * Math.PI) / 180;
       const dLon = ((latlng2.lng - latlng1.lng) * Math.PI) / 180;
       const a =
@@ -245,98 +502,60 @@
       return R * c;
     }
 
-    function showNearby(marker) {
-      const radiusKm = 50; // fixed radius, could be dynamic
-
-      const selectedLatLng = marker.getLatLng();
-
-      const nearbyMarkers = markers
-        .filter((m) => m !== marker)
-        .map((m) => ({
-          marker: m,
-          distance: haversineDistance(selectedLatLng, m.getLatLng()),
-        }))
-        .filter((m) => m.distance <= radiusKm)
-        .sort((a, b) => a.distance - b.distance);
-
-      // Clear previous highlights
-      markers.forEach((m) => resetMarkerIcon(m));
-
-      // Highlight selected marker & nearby markers
-      highlightMarker(marker);
-      nearbyMarkers.forEach((entry) => highlightMarker(entry.marker));
-
-      // Update nearby list
-      nearbyList.innerHTML = "";
-
-      // Selected marker on top
-      const d = marker.data;
-      const selectedDiv = document.createElement("div");
-      selectedDiv.className = "nearby-entry";
-      selectedDiv.style.fontWeight = "bold";
-      selectedDiv.textContent = `${d["First Name"]} ${d["Last Name"]} (Selected)`;
-      nearbyList.appendChild(selectedDiv);
-
-      // Nearby entries
-      if (nearbyMarkers.length === 0) {
-        const noNearby = document.createElement("div");
-        noNearby.textContent = "No nearby markers found.";
-        nearbyList.appendChild(noNearby);
-      } else {
-        nearbyMarkers.forEach(({ marker: m, distance }) => {
-          const d = m.data;
-          const div = document.createElement("div");
-          div.className = "nearby-entry";
-          div.textContent = `${d["First Name"]} ${d["Last Name"]}`;
-
-          const distSpan = document.createElement("span");
-          distSpan.className = "distance";
-          distSpan.textContent = `${distance.toFixed(1)} km`;
-
-          div.appendChild(distSpan);
-          nearbyList.appendChild(div);
-        });
+    function downloadResults() {
+      if (markers.length === 0) {
+        alert("No results to download.");
+        return;
       }
 
-      markerCount.textContent = `Total nearby markers: ${nearbyMarkers.length}`;
+      const typeFilter = typeFilterSelect.value;
+
+      // Filter markers currently on map by type (matches updateMap filter)
+      const filteredMarkers = markers.filter((marker) => {
+        if (typeFilter && marker.data["Type"] !== typeFilter) return false;
+        return true;
+      });
+
+      if (filteredMarkers.length === 0) {
+        alert("No results to download.");
+        return;
+      }
+
+      // Extract all keys from filtered markers to keep CSV structure
+      const allKeysSet = new Set();
+      filteredMarkers.forEach((marker) => {
+        Object.keys(marker.data).forEach((k) => allKeysSet.add(k));
+      });
+      const allKeys = Array.from(allKeysSet);
+
+      // Build CSV rows
+      const rows = [allKeys.join(",")];
+      filteredMarkers.forEach((marker) => {
+        const row = allKeys
+          .map((key) => {
+            const val = marker.data[key];
+            if (val === undefined) return "";
+            // Escape quotes and commas
+            if (typeof val === "string" && (val.includes(",") || val.includes('"'))) {
+              return `"${val.replace(/"/g, '""')}"`;
+            }
+            return val;
+          })
+          .join(",");
+        rows.push(row);
+      });
+
+      const csvString = rows.join("\n");
+      const blob = new Blob([csvString], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "map_results.csv";
+      a.click();
+
+      URL.revokeObjectURL(url);
     }
-
-    // Glow marker on hover from nearby list
-    nearbyList.addEventListener("mouseover", (e) => {
-      const entry = e.target.closest(".nearby-entry");
-      if (!entry) return;
-
-      const text = entry.textContent.replace("(Selected)", "").trim();
-
-      const foundMarker = markers.find((m) => {
-        const d = m.data;
-        if (!d) return false;
-        const fullName = `${d["First Name"]} ${d["Last Name"]}`;
-        return fullName === text;
-      });
-
-      if (foundMarker && foundMarker._icon) {
-        foundMarker._icon.classList.add("glowing-marker");
-      }
-    });
-
-    nearbyList.addEventListener("mouseout", (e) => {
-      const entry = e.target.closest(".nearby-entry");
-      if (!entry) return;
-
-      const text = entry.textContent.replace("(Selected)", "").trim();
-
-      const foundMarker = markers.find((m) => {
-        const d = m.data;
-        if (!d) return false;
-        const fullName = `${d["First Name"]} ${d["Last Name"]}`;
-        return fullName === text;
-      });
-
-      if (foundMarker && foundMarker._icon) {
-        foundMarker._icon.classList.remove("glowing-marker");
-      }
-    });
 
     // Sidebar toggle logic
     sidebarToggle.addEventListener("click", () => {
