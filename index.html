@@ -48,7 +48,7 @@
     #collapseButton {
       position: absolute;
       top: 50%;
-      right: -20px; /* outside the sidebar */
+      right: -30px; /* Moved further out from -20px to -30px */
       transform: translateY(-50%);
       width: 40px;
       height: 40px;
@@ -64,10 +64,21 @@
       transition: transform 0.3s ease;
       user-select: none;
       z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2); /* Added shadow for better visibility */
+    }
+
+    #collapseButton:hover {
+      background: #f0f0f0;
+      transform: translateY(-50%) scale(1.1);
     }
 
     #collapseButton.collapsed {
       transform: translateY(-50%) rotate(180deg);
+      right: -30px; /* Keep same distance when collapsed */
+    }
+
+    #collapseButton.collapsed:hover {
+      transform: translateY(-50%) rotate(180deg) scale(1.1);
     }
 
     #filtersContainer {
