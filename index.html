@@ -7,39 +7,41 @@
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
-
 </head>
 <body>
-  <div id="sidePanel">
-    <div id="filtersContainer">
-      <label for="typeFilter">Filter by Type:</label>
-      <select id="typeFilter">
-        <option value="">All Types</option>
-      </select>
+  <div id="container">
+    <div id="sidePanel" class="expanded">
+      <div id="filtersContainer">
+        <label for="typeFilter">Filter by Type:</label>
+        <select id="typeFilter">
+          <option value="">All Types</option>
+        </select>
 
-      <label for="distanceFilter">Distance (km):</label>
-      <input type="number" id="distanceFilter" min="1" max="1000" step="1" value="50" />
+        <label for="distanceFilter">Distance (km):</label>
+        <input type="number" id="distanceFilter" min="1" max="1000" step="1" value="50" />
+      </div>
+
+      <div id="markerCount">No marker selected</div>
+
+      <div id="resultsHeader">
+        <h3 style="margin: 0;">Results</h3>
+        <button id="downloadCsvBtn">Download Results</button>
+      </div>
+
+      <div id="nearbyList">Click a marker to see nearby entries.</div>
     </div>
 
-    <div id="markerCount">No marker selected</div>
-
-    <div id="resultsHeader">
-      <h3 style="margin: 0;">Results</h3>
-      <button id="downloadCsvBtn">Download Results</button>
+    <div id="mapWrapper">
+      <div id="zoomWrapper"></div>
+      <div id="map"></div>
     </div>
-
-    <div id="nearbyList">Click a marker to see nearby entries.</div>
   </div>
-
-  <div id="zoomWrapper"></div>
-
-  <div id="map"></div>
 
   <div id="sidebarToggle">&#x276E;</div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  
+
   <script src="map-logic.js"></script>
   <script src="ui-handlers.js"></script>
 </body>
