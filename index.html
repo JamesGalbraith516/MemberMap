@@ -50,41 +50,34 @@
     }
 
     #collapseButton {
-      position: fixed; /* Changed from absolute to fixed */
+      position: fixed;
       top: 50%;
-      left: 300px; /* Position at the right edge of the sidebar */
+      left: 300px; /* Start at the right edge of the sidebar */
       transform: translateY(-50%);
-      width: 40px; /* Made thinner from 52px to 40px */
+      width: 40px;
       height: 60px;
       background: white;
       border: 2px solid #007ACC;
-      border-left: none; /* No left border so it connects to sidebar */
-      border-radius: 0 15px 15px 0; /* Rounded on right side only */
+      border-left: none;
+      border-radius: 0 15px 15px 0;
       color: #007ACC;
-      font-size: 16px; /* Reduced font size to fit thinner tab */
+      font-size: 16px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.3s ease;
+      transition: left 0.3s ease; /* Animate the position change */
       user-select: none;
-      z-index: 9999; /* Bring to very top */
-      box-shadow: 2px 0 8px rgba(0,0,0,0.2); /* Shadow on right side only */
+      z-index: 9999;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.2);
     }
 
     #collapseButton:hover {
       background: #f0f0f0;
-      transform: translateY(-50%) translateX(2px); /* Slight outward movement on hover */
-    }
-
-    #collapseButton.collapsed {
-      left: 20px; /* 20px from left edge when sidebar is mostly hidden */
-    }
-
-    #collapseButton.collapsed:hover {
-      background: #f0f0f0;
       transform: translateY(-50%) translateX(2px);
     }
+
+    /* Remove the collapsed class styles since we'll handle it with JS */
 
     #filtersContainer {
       margin-bottom: 0.5rem;
@@ -226,8 +219,8 @@
   </style>
 </head>
 <body>
+  <div id="collapseButton" title="Toggle sidebar">&#x276E;</div>
   <div id="sidePanel">
-    <div id="collapseButton" title="Toggle sidebar">&#x276E;</div>
 
     <div id="filtersContainer">
       <label for="typeFilter">Filter by Type:</label>
@@ -333,18 +326,25 @@
       e.preventDefault();
       e.stopPropagation();
       
-      sidePanel.classList.toggle('collapsed');
+      const isCurrentlyCollapsed = sidePanel.classList.contains('collapsed');
       
-      // Toggle chevron direction and update button position
-      if (sidePanel.classList.contains('collapsed')) {
-        collapseButton.innerHTML = '&#x276F;'; // Right-pointing chevron
-        collapseButton.style.left = '20px'; // Position for collapsed state
+      if (isCurrentlyCollapsed) {
+        // Expanding: move button first, then expand sidebar
+        collapseButton.style.left = '300px';
+        setTimeout(() => {
+          sidePanel.classList.remove('collapsed');
+          collapseButton.innerHTML = '&#x276E;'; // Left-pointing chevron
+        }, 150);
       } else {
-        collapseButton.innerHTML = '&#x276E;'; // Left-pointing chevron
-        collapseButton.style.left = '300px'; // Position for expanded state
+        // Collapsing: collapse sidebar first, then move button
+        sidePanel.classList.add('collapsed');
+        collapseButton.innerHTML = '&#x276F;'; // Right-pointing chevron
+        setTimeout(() => {
+          collapseButton.style.left = '20px';
+        }, 150);
       }
       
-      console.log('Toggle clicked, collapsed:', sidePanel.classList.contains('collapsed'));
+      console.log('Toggle clicked, will be collapsed:', !isCurrentlyCollapsed);
     });
 
     function updateMap() {
