@@ -50,18 +50,18 @@
     }
 
     #collapseButton {
-      position: absolute;
+      position: fixed; /* Changed from absolute to fixed */
       top: 50%;
-      right: -52px; /* Extend 52px from right edge to account for wider tab */
+      left: 300px; /* Position at the right edge of the sidebar */
       transform: translateY(-50%);
-      width: 52px; /* Made wider from 32px to 52px */
+      width: 40px; /* Made thinner from 52px to 40px */
       height: 60px;
       background: white;
       border: 2px solid #007ACC;
       border-left: none; /* No left border so it connects to sidebar */
       border-radius: 0 15px 15px 0; /* Rounded on right side only */
       color: #007ACC;
-      font-size: 18px; /* Slightly larger font for wider tab */
+      font-size: 16px; /* Reduced font size to fit thinner tab */
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -78,7 +78,7 @@
     }
 
     #collapseButton.collapsed {
-      right: -52px; /* Keep same position */
+      left: 20px; /* Move with the collapsed sidebar */
     }
 
     #collapseButton.collapsed:hover {
