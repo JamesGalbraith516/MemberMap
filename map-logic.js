@@ -1,18 +1,17 @@
-const map = L.map("map").setView([50.5, -95.0], 4);
+const map = L.map('map').setView([50.5, -95.0], 4);
 
-// Move Leaflet zoom control inside zoomWrapper div
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+// Move Leaflet zoom controls into zoomWrapper for positioning
 const zoomWrapper = document.getElementById("zoomWrapper");
-const zoomControl = L.control.zoom({ position: "topleft" });
-zoomControl.addTo(map);
-
-// Move zoom control container into zoomWrapper
-const zoomElement = document.querySelector(".leaflet-control-zoom");
-if (zoomElement && zoomWrapper) {
-  zoomWrapper.appendChild(zoomElement);
+const zoomControl = document.querySelector(".leaflet-control-zoom");
+if (zoomControl && zoomWrapper) {
+  zoomWrapper.appendChild(zoomControl);
 }
 
-const sheetURL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSm2djr9eOyF8SI92KcfrCsrFEcW3dmaStUT4H0Ard8A1BUKKgd08owmHvG6TT7AdfPXB26pJ-Stzjw/pub?gid=528897676&single=true&output=csv";
+const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSm2djr9eOyF8SI92KcfrCsrFEcW3dmaStUT4H0Ard8A1BUKKgd08owmHvG6TT7AdfPXB26pJ-Stzjw/pub?gid=528897676&single=true&output=csv';
 
 let markers = [];
 let allData = [];
@@ -22,74 +21,62 @@ let selectedMarker = null;
 const defaultIcon = new L.Icon.Default();
 
 const blueIcon = new L.Icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
-  shadowUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
-  shadowSize: [41, 41],
+  shadowSize: [41, 41]
 });
 
 const yellowIcon = new L.Icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png",
-  shadowUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
-  shadowSize: [41, 41],
+  shadowSize: [41, 41]
 });
 
 const greyIcon = new L.Icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-grey.png",
-  shadowUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-grey.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
-  shadowSize: [41, 41],
+  shadowSize: [41, 41]
 });
 
 fetch(sheetURL)
-  .then((response) => response.text())
-  .then((csv) => {
+  .then(response => response.text())
+  .then(csv => {
     const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
     allData = parsed.data;
 
     const typeSet = new Set();
-    allData.forEach((row) => {
-      const geocode = row["Geocode"];
-      if (!geocode || !geocode.includes(",")) return;
-      typeSet.add(row["Type"]);
+    allData.forEach(row => {
+      const geocode = row['Geocode'];
+      if (!geocode || !geocode.includes(',')) return;
+      typeSet.add(row['Type']);
     });
 
-    const typeSelect = document.getElementById("typeFilter");
-    Array.from(typeSet)
-      .sort()
-      .forEach((type) => {
-        const opt = document.createElement("option");
-        opt.value = type;
-        opt.textContent = type;
-        typeSelect.appendChild(opt);
-      });
+    const typeSelect = document.getElementById('typeFilter');
+    Array.from(typeSet).sort().forEach(type => {
+      const opt = document.createElement('option');
+      opt.value = type;
+      opt.textContent = type;
+      typeSelect.appendChild(opt);
+    });
 
     updateMap();
 
-    document.getElementById("typeFilter").addEventListener("change", updateMap);
-    document
-      .getElementById("distanceFilter")
-      .addEventListener("input", updateMap);
-    document
-      .getElementById("downloadCsvBtn")
-      .addEventListener("click", downloadResults);
+    document.getElementById('typeFilter').addEventListener('change', updateMap);
+    document.getElementById('distanceFilter').addEventListener('input', updateMap);
+    document.getElementById('downloadCsvBtn').addEventListener('click', downloadResults);
   });
 
 function updateMap() {
-  markers.forEach((marker) => map.removeLayer(marker));
+  markers.forEach(marker => map.removeLayer(marker));
   markers = [];
 
   if (radiusCircle) {
@@ -101,21 +88,21 @@ function updateMap() {
   updateMarkerCount(0);
   resetAllMarkerIcons();
 
-  const typeFilter = document.getElementById("typeFilter").value;
+  const typeFilter = document.getElementById('typeFilter').value;
 
-  allData.forEach((row) => {
-    if (typeFilter && row["Type"] !== typeFilter) return;
+  allData.forEach(row => {
+    if (typeFilter && row['Type'] !== typeFilter) return;
 
-    const geocode = row["Geocode"];
-    if (!geocode || !geocode.includes(",")) return;
+    const geocode = row['Geocode'];
+    if (!geocode || !geocode.includes(',')) return;
 
-    const [lat, lng] = geocode.split(",").map(Number);
+    const [lat, lng] = geocode.split(',').map(Number);
     if (isNaN(lat) || isNaN(lng)) return;
 
     const marker = L.marker([lat, lng], { icon: greyIcon });
     marker.data = row;
 
-    marker.on("click", function () {
+    marker.on('click', function () {
       resetAllMarkerIcons();
 
       if (radiusCircle) {
@@ -125,63 +112,64 @@ function updateMap() {
 
       selectedMarker = marker;
 
-      let radiusKm = parseFloat(
-        document.getElementById("distanceFilter").value
-      );
+      let radiusKm = parseFloat(document.getElementById('distanceFilter').value);
       if (isNaN(radiusKm) || radiusKm <= 0) radiusKm = 50;
 
       const selectedLatLng = marker.getLatLng();
       let nearby = findNearbyMarkers(marker, radiusKm);
 
-      nearby = nearby.map((m) => ({
+      // Add distance and sort nearby
+      nearby = nearby.map(m => ({
         marker: m,
-        distance: haversineDistance(selectedLatLng, m.getLatLng()),
+        distance: haversineDistance(selectedLatLng, m.getLatLng())
       }));
       nearby.sort((a, b) => a.distance - b.distance);
 
-      nearby.forEach((entry) => entry.marker.setIcon(blueIcon));
+      // Update marker icons
+      nearby.forEach(entry => entry.marker.setIcon(blueIcon));
       marker.setIcon(yellowIcon);
 
       radiusCircle = L.circle(marker.getLatLng(), {
         radius: radiusKm * 1000,
-        color: "#999",
-        fillColor: "#ccc",
+        color: '#999',
+        fillColor: '#ccc',
         fillOpacity: 0.15,
-        weight: 1,
+        weight: 1
       }).addTo(map);
 
-      const listDiv = document.getElementById("nearbyList");
-      listDiv.innerHTML = "";
+      const listDiv = document.getElementById('nearbyList');
+      listDiv.innerHTML = '';
 
       // Selected marker at top
       const d = marker.data;
-      const divSelected = document.createElement("div");
-      divSelected.className = "nearby-entry";
+      const divSelected = document.createElement('div');
+      divSelected.className = 'nearby-entry';
       divSelected.innerHTML = `
         <div class="name-distance">
-          <span>${d["First Name"]} ${d["Last Name"]} (Selected)</span>
+          <span>${d['First Name']} ${d['Last Name']} (Selected)</span>
           <span class="distance">0.0 km</span>
         </div>
-        <div>${d["Business Name"]}</div>
+        <div>${d['Business Name']}</div>
       `;
       listDiv.appendChild(divSelected);
 
+      // Sorted nearby entries
       if (nearby.length === 0) {
-        const noDiv = document.createElement("div");
-        noDiv.textContent = "No nearby markers found.";
+        const noDiv = document.createElement('div');
+        noDiv.textContent = 'No nearby markers found.';
         listDiv.appendChild(noDiv);
       } else {
-        nearby.forEach((entry) => {
+        nearby.forEach(entry => {
           const d = entry.marker.data;
           const distance = entry.distance.toFixed(1);
-          const div = document.createElement("div");
-          div.className = "nearby-entry";
+          const div = document.createElement('div');
+          div.className = 'nearby-entry';
           div.innerHTML = `
             <div class="name-distance">
-              <span>${d["First Name"]} ${d["Last Name"]}</span>
+              <span>${d['First Name']} ${d['Last Name']}</span>
               <span class="distance">${distance} km</span>
             </div>
-            <div>${d["Business Name"]}</div>
+            <div>${d['Business Name']}</div>
           `;
           listDiv.appendChild(div);
         });
@@ -190,21 +178,11 @@ function updateMap() {
       updateMarkerCount(nearby.length);
 
       const popupHTML = `
-        <strong>${marker.data["First Name"]} ${marker.data["Last Name"]}</strong><br>
-        ${marker.data["Business Name"]}<br><br>
+        <strong>${marker.data['First Name']} ${marker.data['Last Name']}</strong><br>
+        ${marker.data['Business Name']}<br><br>
         <strong>${nearby.length} nearby markers within ${radiusKm} km</strong>
       `;
       marker.bindPopup(popupHTML).openPopup();
-    });
-
-    // Add glow effect on hover
-    marker.on("mouseover", () => {
-      const el = marker._icon;
-      if (el) el.classList.add("marker-glow");
-    });
-    marker.on("mouseout", () => {
-      const el = marker._icon;
-      if (el) el.classList.remove("marker-glow");
     });
 
     marker.addTo(map);
@@ -213,13 +191,13 @@ function updateMap() {
 }
 
 function resetAllMarkerIcons() {
-  markers.forEach((m) => m.setIcon(greyIcon));
+  markers.forEach(m => m.setIcon(greyIcon));
 }
 
 function updateMarkerCount(count) {
-  const countDiv = document.getElementById("markerCount");
+  const countDiv = document.getElementById('markerCount');
   if (count === 0) {
-    countDiv.textContent = "No marker selected";
+    countDiv.textContent = 'No marker selected';
   } else {
     countDiv.textContent = `Total nearby markers: ${count}`;
   }
@@ -227,14 +205,12 @@ function updateMarkerCount(count) {
 
 function haversineDistance(latlng1, latlng2) {
   const R = 6371;
-  const dLat = ((latlng2.lat - latlng1.lat) * Math.PI) / 180;
-  const dLon = ((latlng2.lng - latlng1.lng) * Math.PI) / 180;
+  const dLat = (latlng2.lat - latlng1.lat) * Math.PI / 180;
+  const dLon = (latlng2.lng - latlng1.lng) * Math.PI / 180;
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((latlng1.lat * Math.PI) / 180) *
-      Math.cos((latlng2.lat * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos(latlng1.lat * Math.PI / 180) * Math.cos(latlng2.lat * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -243,7 +219,7 @@ function findNearbyMarkers(clickedMarker, radiusKm) {
   const nearby = [];
   const clickedLatLng = clickedMarker.getLatLng();
 
-  markers.forEach((marker) => {
+  markers.forEach(marker => {
     if (marker === clickedMarker) return;
     const dist = haversineDistance(clickedLatLng, marker.getLatLng());
     if (dist <= radiusKm) {
@@ -256,47 +232,51 @@ function findNearbyMarkers(clickedMarker, radiusKm) {
 
 function downloadResults() {
   if (markers.length === 0) {
-    alert("No results to download.");
+    alert('No results to download.');
     return;
   }
 
-  const typeFilter = document.getElementById("typeFilter").value;
+  const typeFilter = document.getElementById('typeFilter').value;
 
-  const filteredMarkers = markers.filter((marker) => {
-    if (typeFilter && marker.data["Type"] !== typeFilter) return false;
+  // Filter markers currently on map by type (matches updateMap filter)
+  const filteredMarkers = markers.filter(marker => {
+    if (typeFilter && marker.data['Type'] !== typeFilter) return false;
     return true;
   });
 
   if (filteredMarkers.length === 0) {
-    alert("No results to download.");
+    alert('No results to download.');
     return;
   }
 
+  // Prepare data: include all columns from the original CSV for these filtered markers
   if (selectedMarker && !filteredMarkers.includes(selectedMarker)) {
     filteredMarkers.push(selectedMarker);
   }
 
+  // Extract all columns keys to maintain CSV structure
   const allKeysSet = new Set();
-  filteredMarkers.forEach((marker) => {
-    Object.keys(marker.data).forEach((k) => allKeysSet.add(k));
+  filteredMarkers.forEach(marker => {
+    Object.keys(marker.data).forEach(k => allKeysSet.add(k));
   });
   const allKeys = Array.from(allKeysSet);
 
-  const csvData = filteredMarkers.map((marker) => {
+  // Build array of objects for Papa.unparse
+  const csvData = filteredMarkers.map(marker => {
     const row = {};
-    allKeys.forEach((k) => {
-      row[k] = marker.data[k] || "";
+    allKeys.forEach(k => {
+      row[k] = marker.data[k] || '';
     });
     return row;
   });
 
   const csv = Papa.unparse(csvData);
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
+  const a = document.createElement('a');
   a.href = url;
-  a.download = "filtered_results.csv";
+  a.download = 'filtered_results.csv';
   document.body.appendChild(a);
   a.click();
   setTimeout(() => {
