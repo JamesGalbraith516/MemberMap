@@ -48,7 +48,7 @@
     #collapseButton {
       position: absolute;
       top: 50%;
-      right: -20px;
+      right: -20px; /* outside the sidebar */
       transform: translateY(-50%);
       width: 40px;
       height: 40px;
@@ -194,21 +194,6 @@
       z-index: 1;
     }
 
-    #zoomWrapper {
-      position: absolute;
-      top: 10px;
-      left: 300px;
-      z-index: 1100;
-      transition: left 0.3s ease;
-      background: white;
-      border-radius: 4px;
-      box-shadow: 0 0 6px rgba(0,0,0,0.3);
-    }
-
-    #sidePanel.collapsed + #mapWrapper #zoomWrapper {
-      left: 20px;
-    }
-
     /* Marker glow on hover */
     .leaflet-marker-icon {
       transition: filter 0.3s ease;
@@ -248,26 +233,18 @@
 
   <div id="mapWrapper">
     <div id="map"></div>
-    <div id="zoomWrapper"></div>
   </div>
 
   <script>
     const sidePanel = document.getElementById('sidePanel');
     const collapseButton = document.getElementById('collapseButton');
-    const zoomWrapper = document.getElementById('zoomWrapper');
 
-    // Initialize map
-    const map = L.map('map').setView([50.5, -95.0], 4);
+    // Initialize map without zoom controls
+    const map = L.map('map', { zoomControl: false }).setView([50.5, -95.0], 4);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
-
-    // Move Leaflet zoom controls into zoomWrapper
-    const zoomControl = document.querySelector('.leaflet-control-zoom');
-    if (zoomControl && zoomWrapper) {
-      zoomWrapper.appendChild(zoomControl);
-    }
 
     const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSm2djr9eOyF8SI92KcfrCsrFEcW3dmaStUT4H0Ard8A1BUKKgd08owmHvG6TT7AdfPXB26pJ-Stzjw/pub?gid=528897676&single=true&output=csv';
 
