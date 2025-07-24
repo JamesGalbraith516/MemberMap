@@ -49,9 +49,9 @@
     }
 
     #collapseButton {
-      position: absolute;
+      position: fixed;
       top: 50%;
-      right: -100px; /* Moved much further out */
+      left: 400px; /* 300px sidebar width + 100px distance */
       transform: translateY(-50%);
       width: 40px;
       height: 40px;
@@ -77,7 +77,7 @@
 
     #collapseButton.collapsed {
       transform: translateY(-50%) rotate(180deg);
-      right: -60px; /* Closer when collapsed since sidebar is mostly hidden */
+      left: 80px; /* Closer when collapsed since sidebar is mostly hidden */
     }
 
     #collapseButton.collapsed:hover {
