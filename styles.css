@@ -12,6 +12,7 @@ body {
 }
 
 #sidePanel {
+  position: relative; /* for toggle button absolute positioning */
   width: 300px;
   background: #0094cd;
   color: white;
@@ -23,29 +24,33 @@ body {
   flex-direction: column;
   font-size: 1rem;
   line-height: 1.2;
-  position: relative;
   transition: width 0.3s ease;
 }
 
 #sidePanel.collapsed {
   width: 40px;
-  padding: 1rem 0 1rem 0;
+  padding: 0;
   overflow: visible;
+  color: transparent;
+}
+
+#sidePanel.collapsed > *:not(#sidebarToggle) {
+  display: none;
 }
 
 #sidebarToggle {
   position: absolute;
   top: 50%;
-  right: 0;
-  transform: translate(50%, -50%);
-  width: 30px;
-  height: 30px;
+  right: -20px;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: white;
   color: #0094cd;
   border: 2px solid #0094cd;
-  font-size: 18px;
-  line-height: 26px;
+  font-size: 20px;
+  line-height: 36px;
   text-align: center;
   cursor: pointer;
   user-select: none;
@@ -54,7 +59,7 @@ body {
 }
 
 #sidebarToggle.collapsed {
-  transform: translate(50%, -50%) rotate(180deg);
+  transform: translateY(-50%) rotate(180deg);
 }
 
 #filtersContainer {
@@ -83,7 +88,6 @@ body {
   margin-bottom: 1rem;
   font-size: 0.75rem;
   color: white;
-  min-height: 24px;
 }
 
 #resultsHeader {
@@ -153,8 +157,21 @@ body {
   height: 100%;
 }
 
+/* Wrapper for Leaflet zoom control */
+#zoomWrapper {
+  position: absolute;
+  top: 10px;
+  left: 310px; /* sidebar width + 10px */
+  z-index: 1001; /* above map */
+  transition: left 0.3s ease;
+}
+
+#sidePanel.collapsed + #zoomWrapper {
+  left: 50px; /* collapsed sidebar width + 10px */
+}
+
 /* Glow effect on marker hover */
 .marker-glow {
-  filter: drop-shadow(0 0 5px #00aaff);
+  filter: drop-shadow(0 0 8px #00aaff);
   transition: filter 0.3s ease;
 }
