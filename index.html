@@ -335,11 +335,13 @@
       
       sidePanel.classList.toggle('collapsed');
       
-      // Toggle chevron direction
+      // Toggle chevron direction and update button position
       if (sidePanel.classList.contains('collapsed')) {
         collapseButton.innerHTML = '&#x276F;'; // Right-pointing chevron
+        collapseButton.style.left = '20px'; // Position for collapsed state
       } else {
         collapseButton.innerHTML = '&#x276E;'; // Left-pointing chevron
+        collapseButton.style.left = '300px'; // Position for expanded state
       }
       
       console.log('Toggle clicked, collapsed:', sidePanel.classList.contains('collapsed'));
