@@ -67,7 +67,7 @@
       justify-content: center;
       transition: all 0.3s ease;
       user-select: none;
-      z-index: 1002; /* Higher than map to ensure visibility */
+      z-index: 9999; /* Bring to very top */
       box-shadow: 2px 0 8px rgba(0,0,0,0.2); /* Shadow on right side only */
     }
 
@@ -328,7 +328,10 @@
       });
 
     // Toggle sidebar collapse
-    collapseButton.addEventListener('click', () => {
+    collapseButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
       sidePanel.classList.toggle('collapsed');
       
       // Toggle chevron direction
@@ -337,6 +340,8 @@
       } else {
         collapseButton.innerHTML = '&#x276E;'; // Left-pointing chevron
       }
+      
+      console.log('Toggle clicked, collapsed:', sidePanel.classList.contains('collapsed'));
     });
 
     function updateMap() {
