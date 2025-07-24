@@ -51,15 +51,16 @@
     #collapseButton {
       position: absolute;
       top: 50%;
-      right: -50px; /* 50px away from the right edge of sidebar */
+      right: -30px; /* Extend 30px from right edge */
       transform: translateY(-50%);
-      width: 40px;
-      height: 40px;
+      width: 30px;
+      height: 60px;
       background: white;
-      border-radius: 50%;
       border: 2px solid #007ACC;
+      border-left: none; /* No left border so it connects to sidebar */
+      border-radius: 0 15px 15px 0; /* Rounded on right side only */
       color: #007ACC;
-      font-size: 20px;
+      font-size: 16px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -67,21 +68,21 @@
       transition: all 0.3s ease;
       user-select: none;
       z-index: 1001;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      box-shadow: 2px 0 8px rgba(0,0,0,0.2); /* Shadow on right side only */
     }
 
     #collapseButton:hover {
       background: #f0f0f0;
-      transform: translateY(-50%) scale(1.1);
+      transform: translateY(-50%) translateX(2px); /* Slight outward movement on hover */
     }
 
     #collapseButton.collapsed {
-      transform: translateY(-50%) rotate(180deg);
-      right: -50px; /* Keep same 50px distance */
+      right: -30px; /* Keep same position */
     }
 
     #collapseButton.collapsed:hover {
-      transform: translateY(-50%) rotate(180deg) scale(1.1);
+      background: #f0f0f0;
+      transform: translateY(-50%) translateX(2px);
     }
 
     #filtersContainer {
@@ -329,7 +330,13 @@
     // Toggle sidebar collapse
     collapseButton.addEventListener('click', () => {
       sidePanel.classList.toggle('collapsed');
-      collapseButton.classList.toggle('collapsed');
+      
+      // Toggle chevron direction
+      if (sidePanel.classList.contains('collapsed')) {
+        collapseButton.innerHTML = '&#x276F;'; // Right-pointing chevron
+      } else {
+        collapseButton.innerHTML = '&#x276E;'; // Left-pointing chevron
+      }
     });
 
     function updateMap() {
