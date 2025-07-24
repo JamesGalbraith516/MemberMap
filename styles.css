@@ -1,0 +1,160 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: sans-serif;
+}
+
+body {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+}
+
+#sidePanel {
+  width: 300px;
+  background: #0094cd;
+  color: white;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+  padding: 1rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  font-size: 1rem;
+  line-height: 1.2;
+  position: relative;
+  transition: width 0.3s ease;
+}
+
+#sidePanel.collapsed {
+  width: 40px;
+  padding: 1rem 0 1rem 0;
+  overflow: visible;
+}
+
+#sidebarToggle {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translate(50%, -50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: white;
+  color: #0094cd;
+  border: 2px solid #0094cd;
+  font-size: 18px;
+  line-height: 26px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.3s ease;
+  z-index: 1000;
+}
+
+#sidebarToggle.collapsed {
+  transform: translate(50%, -50%) rotate(180deg);
+}
+
+#filtersContainer {
+  margin-bottom: 0.5rem;
+}
+
+#filtersContainer label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 1rem;
+  color: white;
+}
+
+#filtersContainer select,
+#filtersContainer input[type="number"] {
+  width: 100%;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+  padding: 0.25rem 0.4rem;
+}
+
+#markerCount {
+  font-weight: bold;
+  margin-bottom: 1rem;
+  font-size: 0.75rem;
+  color: white;
+  min-height: 24px;
+}
+
+#resultsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+#downloadCsvBtn {
+  background-color: #4e4e4e;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+#downloadCsvBtn:hover {
+  background-color: #3a3a3a;
+}
+
+#nearbyList {
+  font-size: 0.75rem;
+  padding-top: 15px;
+  color: white;
+  overflow-wrap: break-word;
+}
+
+.nearby-entry {
+  padding: 0.5rem 0.3rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  flex-direction: column;
+  color: white;
+}
+
+.nearby-entry:last-child {
+  border-bottom: none;
+}
+
+.name-distance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  font-weight: bold;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.distance {
+  flex-shrink: 0;
+  min-width: 50px;
+  text-align: right;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 0.7rem;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+#map {
+  flex: 1;
+  height: 100%;
+}
+
+/* Glow effect on marker hover */
+.marker-glow {
+  filter: drop-shadow(0 0 5px #00aaff);
+  transition: filter 0.3s ease;
+}
