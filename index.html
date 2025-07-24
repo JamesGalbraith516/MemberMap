@@ -156,6 +156,8 @@
       padding: 0.3rem 0.3rem 0.8rem 0.3rem;
       border-bottom: 1px solid rgba(255,255,255,0.3);
       color: white;
+      transition: all 0.3s ease; /* Added transition for smooth hover effects */
+      cursor: pointer; /* Show it's interactive */
     }
 
     .nearby-entry:last-child {
@@ -416,6 +418,7 @@
           const d = marker.data;
           const divSelected = document.createElement('div');
           divSelected.className = 'nearby-entry';
+          divSelected.setAttribute('data-marker-id', getMarkerId(marker));
           divSelected.innerHTML = `
             <div class="name-distance">
               <span>${d['First Name']} ${d['Last Name']} (Selected)</span>
@@ -423,6 +426,15 @@
             </div>
             <div class="company-name">${d['Business Name']}</div>
           `;
+          
+          // Add hover events for selected entry
+          divSelected.addEventListener('mouseenter', () => {
+            marker.getElement().style.filter = 'drop-shadow(0 0 12px #ffff00)';
+          });
+          divSelected.addEventListener('mouseleave', () => {
+            marker.getElement().style.filter = 'drop-shadow(0 0 0 rgba(0,0,0,0))';
+          });
+          
           listDiv.appendChild(divSelected);
 
           // Sorted nearby entries
@@ -436,6 +448,7 @@
               const distance = entry.distance.toFixed(1);
               const div = document.createElement('div');
               div.className = 'nearby-entry';
+              div.setAttribute('data-marker-id', getMarkerId(entry.marker));
               div.innerHTML = `
                 <div class="name-distance">
                   <span>${d['First Name']} ${d['Last Name']}</span>
@@ -443,9 +456,23 @@
                 </div>
                 <div class="company-name">${d['Business Name']}</div>
               `;
+              
+              // Add hover events for nearby entries
+              div.addEventListener('mouseenter', () => {
+                entry.marker.getElement().style.filter = 'drop-shadow(0 0 12px #0066ff)';
+                div.style.backgroundColor = 'rgba(255,255,255,0.1)';
+              });
+              div.addEventListener('mouseleave', () => {
+                entry.marker.getElement().style.filter = 'drop-shadow(0 0 0 rgba(0,0,0,0))';
+                div.style.backgroundColor = 'transparent';
+              });
+              
               listDiv.appendChild(div);
             });
           }
+
+          // Store nearby markers for hover functionality
+          marker._nearbyMarkers = nearby;
 
           updateMarkerCount(nearby.length);
 
@@ -457,6 +484,29 @@
           marker.bindPopup(popupHTML).openPopup();
         });
 
+        // Add hover events to markers
+        marker.on('mouseover', function() {
+          if (selectedMarker) {
+            const markerId = getMarkerId(marker);
+            const correspondingEntry = document.querySelector(`[data-marker-id="${markerId}"]`);
+            if (correspondingEntry) {
+              correspondingEntry.style.backgroundColor = 'rgba(255,255,255,0.2)';
+              correspondingEntry.style.transform = 'translateX(5px)';
+            }
+          }
+        });
+
+        marker.on('mouseout', function() {
+          if (selectedMarker) {
+            const markerId = getMarkerId(marker);
+            const correspondingEntry = document.querySelector(`[data-marker-id="${markerId}"]`);
+            if (correspondingEntry) {
+              correspondingEntry.style.backgroundColor = 'transparent';
+              correspondingEntry.style.transform = 'translateX(0)';
+            }
+          }
+        });
+
         marker.addTo(map);
         markers.push(marker);
       });
@@ -464,6 +514,12 @@
 
     function resetAllMarkerIcons() {
       markers.forEach(m => m.setIcon(greyIcon));
+    }
+
+    function getMarkerId(marker) {
+      // Create a unique ID based on marker data
+      const data = marker.data;
+      return `${data['First Name']}_${data['Last Name']}_${data['Business Name']}`.replace(/\s+/g, '_');
     }
 
     function updateMarkerCount(count) {
