@@ -218,6 +218,23 @@
       z-index: 9999 !important;
     }
 
+    /* Add error message styling */
+    #errorMessage {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #ff4444;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      z-index: 10000;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      display: none;
+    }
+
   </style>
 </head>
 <body>
@@ -234,18 +251,24 @@
       <input type="number" id="distanceFilter" min="1" max="1000" step="1" value="50" />
     </div>
 
-    <div id="markerCount">No marker selected</div>
+    <div id="markerCount">Loading data...</div>
 
     <div id="resultsHeader">
       <h3 style="margin: 0;">Results</h3>
       <button id="downloadCsvBtn">Download Results</button>
     </div>
 
-    <div id="nearbyList">Click a marker to see nearby entries.</div>
+    <div id="nearbyList">Loading map data...</div>
   </div>
 
   <div id="mapWrapper">
     <div id="map"></div>
+  </div>
+
+  <div id="errorMessage">
+    <h3>Error Loading Data</h3>
+    <p id="errorText"></p>
+    <button onclick="document.getElementById('errorMessage').style.display='none'">Close</button>
   </div>
 
   <script>
@@ -259,7 +282,7 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    const sheetURL = 'https://docs.google.com/spreadsheets/d/17h6qtv7Kw3ejYyK0hv7XyTUQ1y7KP3wj_w-pG4yNfkM/edit?gid=1454020769#gid=1454020769&single=true&output=csv';
+    // Fixed the duplicate declaration and improved the URL format
     const sheetURL = 'https://docs.google.com/spreadsheets/d/17h6qtv7Kw3ejYyK0hv7XyTUQ1y7KP3wj_w-pG4yNfkM/export?format=csv&gid=1454020769';
 
     let markers = [];
@@ -294,20 +317,56 @@
       shadowSize: [41, 41]
     });
 
-    // Load CSV and populate map and filters
+    function showError(message) {
+      document.getElementById('errorText').textContent = message;
+      document.getElementById('errorMessage').style.display = 'block';
+      document.getElementById('markerCount').textContent = 'Error loading data';
+      document.getElementById('nearbyList').textContent = 'Failed to load map data. Please check the console for details.';
+    }
+
+    // Load CSV and populate map and filters with better error handling
+    console.log('Attempting to load data from:', sheetURL);
+    
     fetch(sheetURL)
-      .then(response => response.text())
+      .then(response => {
+        console.log('Fetch response status:', response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.text();
+      })
       .then(csv => {
+        console.log('CSV data received, length:', csv.length);
+        console.log('First 500 characters:', csv.substring(0, 500));
+        
         const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
+        console.log('Parsed data:', parsed);
+        
+        if (parsed.errors && parsed.errors.length > 0) {
+          console.error('Parse errors:', parsed.errors);
+        }
+        
         allData = parsed.data;
+        console.log('Total rows:', allData.length);
 
         // Fill type filter dropdown
         const typeSet = new Set();
-        allData.forEach(row => {
+        let validRows = 0;
+        
+        allData.forEach((row, index) => {
           const geocode = row['Geocode'];
-          if (!geocode || !geocode.includes(',')) return;
-          typeSet.add(row['Type']);
+          if (geocode && geocode.includes(',')) {
+            validRows++;
+            if (row['Type']) {
+              typeSet.add(row['Type']);
+            }
+          } else {
+            console.log(`Row ${index} missing or invalid geocode:`, geocode);
+          }
         });
+
+        console.log('Valid rows with geocode:', validRows);
+        console.log('Unique types found:', Array.from(typeSet));
 
         const typeSelect = document.getElementById('typeFilter');
         Array.from(typeSet).sort().forEach(type => {
@@ -317,11 +376,20 @@
           typeSelect.appendChild(opt);
         });
 
+        if (validRows === 0) {
+          showError('No valid location data found in the spreadsheet. Please check that the "Geocode" column contains latitude,longitude values.');
+          return;
+        }
+
         updateMap();
 
         typeSelect.addEventListener('change', updateMap);
         document.getElementById('distanceFilter').addEventListener('input', updateMap);
         document.getElementById('downloadCsvBtn').addEventListener('click', downloadResults);
+      })
+      .catch(error => {
+        console.error('Error loading data:', error);
+        showError(`Failed to load data: ${error.message}. Please check that the Google Sheets link is publicly accessible.`);
       });
 
     // Toggle sidebar collapse
@@ -351,6 +419,8 @@
     });
 
     function updateMap() {
+      console.log('Updating map...');
+      
       markers.forEach(marker => map.removeLayer(marker));
       markers = [];
 
@@ -364,15 +434,30 @@
       resetAllMarkerIcons();
 
       const typeFilter = document.getElementById('typeFilter').value;
+      let addedMarkers = 0;
 
-      allData.forEach(row => {
+      allData.forEach((row, index) => {
         if (typeFilter && row['Type'] !== typeFilter) return;
 
         const geocode = row['Geocode'];
-        if (!geocode || !geocode.includes(',')) return;
+        if (!geocode || !geocode.includes(',')) {
+          console.log(`Skipping row ${index} - no valid geocode:`, geocode);
+          return;
+        }
 
-        const [lat, lng] = geocode.split(',').map(Number);
-        if (isNaN(lat) || isNaN(lng)) return;
+        const coords = geocode.split(',').map(s => s.trim());
+        if (coords.length !== 2) {
+          console.log(`Skipping row ${index} - geocode format error:`, geocode);
+          return;
+        }
+
+        const [lat, lng] = coords.map(Number);
+        if (isNaN(lat) || isNaN(lng)) {
+          console.log(`Skipping row ${index} - invalid coordinates:`, lat, lng);
+          return;
+        }
+
+        console.log(`Adding marker ${addedMarkers + 1}: ${row['First Name']} ${row['Last Name']} at [${lat}, ${lng}]`);
 
         const marker = L.marker([lat, lng], { icon: greyIcon });
         marker.data = row;
@@ -510,7 +595,16 @@
 
         marker.addTo(map);
         markers.push(marker);
+        addedMarkers++;
       });
+
+      console.log(`Added ${addedMarkers} markers to the map`);
+      
+      if (addedMarkers === 0) {
+        document.getElementById('nearbyList').textContent = 'No markers found with current filters.';
+      } else {
+        document.getElementById('nearbyList').textContent = 'Click a marker to see nearby entries.';
+      }
     }
 
     function resetAllMarkerIcons() {
